@@ -1,4 +1,4 @@
-import jax.numpy as jnp
+import autograd.numpy as np
 
 class Scheduler:
     """
@@ -51,12 +51,12 @@ class Adagrad(Scheduler):
         delta = 1e-8  # avoid division ny zero
 
         if self.G_t is None:
-            self.G_t = jnp.zeros((gradient.shape[0], gradient.shape[0]))
+            self.G_t = np.zeros((gradient.shape[0], gradient.shape[0]))
 
         self.G_t += gradient @ gradient.T
 
         G_t_inverse = 1 / (
-            delta + jnp.sqrt(jnp.reshape(jnp.diagonal(self.G_t), (self.G_t.shape[0], 1)))
+            delta + np.sqrt(np.reshape(np.diagonal(self.G_t), (self.G_t.shape[0], 1)))
         )
         return self.eta * gradient * G_t_inverse
 
@@ -75,12 +75,12 @@ class AdagradMomentum(Scheduler):
         delta = 1e-8  # avoid division ny zero
 
         if self.G_t is None:
-            self.G_t = jnp.zeros((gradient.shape[0], gradient.shape[0]))
+            self.G_t = np.zeros((gradient.shape[0], gradient.shape[0]))
 
         self.G_t += gradient @ gradient.T
 
         G_t_inverse = 1 / (
-            delta + jnp.sqrt(jnp.reshape(jnp.diagonal(self.G_t), (self.G_t.shape[0], 1)))
+            delta + np.sqrt(np.reshape(np.diagonal(self.G_t), (self.G_t.shape[0], 1)))
         )
         self.change = self.change * self.momentum + self.eta * gradient * G_t_inverse
         return self.change
@@ -98,7 +98,7 @@ class RMS_prop(Scheduler):
     def update_change(self, gradient):
         delta = 1e-8  # avoid division ny zero
         self.second = self.rho * self.second + (1 - self.rho) * gradient * gradient
-        return self.eta * gradient / (jnp.sqrt(self.second + delta))
+        return self.eta * gradient / (np.sqrt(self.second + delta))
 
     def reset(self):
         self.second = 0.0
@@ -122,7 +122,7 @@ class Adam(Scheduler):
         moment_corrected = self.moment / (1 - self.rho**self.n_epochs)
         second_corrected = self.second / (1 - self.rho2**self.n_epochs)
 
-        return self.eta * moment_corrected / (jnp.sqrt(second_corrected + delta))
+        return self.eta * moment_corrected / (np.sqrt(second_corrected + delta))
 
     def reset(self):
         self.n_epochs += 1
