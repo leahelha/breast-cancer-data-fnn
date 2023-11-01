@@ -1,64 +1,48 @@
 import autograd.numpy as anp
+import numpy as np
 from FFNN import FFNN
 from activation_functions import sigmoid
-from cost_functions import CostCrossEntropy, CostLogReg
+from cost_functions import CostOLS
 from Scheduler import Momentum, Constant, Adagrad, Adam
-from sklearn.neural_network import MLPClassifier
+from sklearn.neural_network import MLPRegressor
 
-# Design matrix
-X = anp.asarray([[0,0], [0,1], [1,0], [1,1]])
+def FrankeFunction(x,y):
+    '''Calculates the two-dimensional Franke's function.'''
+    term1 = 0.75*anp.exp(-(0.25*(9*x-2)**2) - 0.25*((9*y-2)**2))
+    term2 = 0.75*anp.exp(-((9*x+1)**2)/49.0 - 0.1*(9*y+1))
+    term3 = 0.5*anp.exp(-(9*x-7)**2/4.0 - 0.25*((9*y-3)**2))
+    term4 = -0.2*anp.exp(-(9*x-4)**2 - (9*y-7)**2)
+    return term1 + term2 + term3 + term4
 
-# Targets for different gates
-y_xor = anp.asarray([0,1,1,0]).reshape(-1,1)
-y_and = anp.asarray([0,0,0,1]).reshape(-1,1)
-y_or = anp.asarray([0,1,1,1]).reshape(-1,1)
+n = 101 # number of points along one axis, total number of points will be n^2
+rng = anp.random.default_rng(seed = 25) # seed to ensure same numbers over multiple runs
+x = anp.sort(rng.random((n, 1)), axis = 0)
+y = anp.sort(rng.random((n, 1)), axis = 0)
+x_, y_ = anp.meshgrid(x, y)
+xy = anp.stack((anp.ravel(x_),anp.ravel(y_)), axis = -1) # formatting needed to set up the design matrix
+# z = add_noise(FrankeFunction(x_, y_), 0.1)
+z = FrankeFunction(x_, y_)
+z_fit = z.reshape(-1,1)
+
+xy_mean = np.mean(xy)
+xy_std = np.std(xy)
+xy_norm = (xy-xy_mean)/xy_std
+z_fit_mean = np.mean(z_fit)
+z_fit_std = np.std(z_fit)
+z_fit_norm = (z_fit-z_fit_mean)/z_fit_std
 
 # Create neural network
-network = FFNN((2,2,1), sigmoid, sigmoid, CostLogReg, 10)
-eta_vals = anp.logspace(-4,-1,4)
+network = FFNN((xy.shape[1],50, 50, 1), sigmoid, lambda x: x, CostOLS, 10)
+eta_vals = anp.logspace(-4,-2,3)
 lmbda_vals = anp.logspace(-5,-1,5)
 
-# One feed forward (predict without training first)
-first_pred = network.predict(X)
-
-# XOR gate
-print("--- XOR GATE ---")
 for eta in eta_vals:
     for lmbda in lmbda_vals:
+        # network.reset_weights_and_bias()
         network.reset_weights()
         sched_xor = Adam(eta, 0.9, 0.999)
-        network.fit(X, y_xor, sched_xor, 1, 1000, lmbda)
-        pred_xor = network.predict(X)
-        # print(f"\n{pred_xor}")
+        network.fit(xy_norm, z_fit_norm, sched_xor, 1, 100, lmbda)
 
-        skl_network = MLPClassifier(hidden_layer_sizes = (2), activation = 'logistic', solver = 'adam', alpha = lmbda, learning_rate_init = eta, max_iter = 1000, random_state = 10)
-        skl_network.fit(X, y_xor.ravel())
-        print(f"Sklearn: {skl_network.score(X, y_xor)}")
-
-# OR gate
-print("--- OR GATE ---")
-for eta in eta_vals:
-    for lmbda in lmbda_vals:
-        network.reset_weights()
-        sched_or = Adam(eta, 0.9, 0.999)
-        network.fit(X, y_or, sched_or, 1, 1000, lmbda)
-        pred_or = network.predict(X)
-        # print(f"\n{pred_or}")
-
-        skl_network = MLPClassifier(hidden_layer_sizes = (2), activation = 'logistic', solver = 'adam', alpha = lmbda, learning_rate_init = eta, max_iter = 1000, random_state = 10)
-        skl_network.fit(X, y_or.ravel())
-        print(f"Sklearn: {skl_network.score(X, y_or)}")
-
-# AND gate
-print("--- AND GATE ---")
-for eta in eta_vals:  
-    for lmbda in lmbda_vals:
-        network.reset_weights()
-        sched_and = Adam(eta, 0.9, 0.999)
-        network.fit(X, y_and, sched_and, 1, 1000, lmbda)
-        pred_or = network.predict(X)
-        # print(f"\n{pred_and}")
-
-        skl_network = MLPClassifier(hidden_layer_sizes = (2), activation = 'logistic', solver = 'adam', alpha = lmbda, learning_rate_init = eta, max_iter = 1000, random_state = 10)
-        skl_network.fit(X, y_and.ravel())
-        print(f"Sklearn: {skl_network.score(X, y_and)}")
+        # skl_network = MLPRegressor(hidden_layer_sizes = (50), activation = 'logistic', solver = 'adam', alpha = lmbda, learning_rate_init = eta, max_iter = 100, random_state = 10)
+        # skl_network.fit(xy, z.flatten())
+        # print(f"Sklearn: {skl_network.score(xy, z.flatten())}")

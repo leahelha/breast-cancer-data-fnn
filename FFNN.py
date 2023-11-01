@@ -50,13 +50,14 @@ class FFNN:
         self.cost_func = cost_func
         self.seed = seed
         self.weights = list()
+        self.bias = list()
         self.schedulers_weight = list()
         self.schedulers_bias = list()
         self.a_matrices = list()
         self.z_matrices = list()
         self.classification = None
 
-        self.reset_weights()
+        self.reset_weights_and_bias()
         self._set_classification()
 
     def fit(
@@ -247,24 +248,24 @@ class FFNN:
         else:
             return predict
 
-    def reset_weights(self):
+    def reset_weights_and_bias(self):
         """
         Description:
         ------------
-            Resets/Reinitializes the weights in order to train the network for a new problem.
+            Resets/Reinitializes the weights and biases in order to train the network for a new problem.
 
         """
         if self.seed is not None:
             np.random.seed(self.seed)
 
         self.weights = list()
+        self.bias = list()
         for i in range(len(self.dimensions) - 1):
-            weight_array = np.random.randn(
-                self.dimensions[i] + 1, self.dimensions[i + 1]
-            )
-            weight_array[0, :] = np.random.randn(self.dimensions[i + 1]) * 0.01
+            weight_array = np.random.randn(self.dimensions[i], self.dimensions[i + 1])
+            bias_array = np.random.randn(self.dimensions[i + 1]) * 0.01
 
             self.weights.append(weight_array)
+            self.bias.append(bias_array)
 
     def _feedforward(self, X: np.ndarray):
         """
@@ -293,8 +294,8 @@ class FFNN:
 
         # Add a coloumn of zeros as the first coloumn of the design matrix, in order
         # to add bias to our data
-        bias = np.ones((X.shape[0], 1)) * 0.01
-        X = np.hstack([bias, X])
+        # bias = np.ones((X.shape[0], 1)) * 0.01
+        # X = np.hstack([bias, X])
 
         # a^0, the nodes in the input layer (one a^0 for each row in X - where the
         # exponent indicates layer number).
@@ -305,20 +306,17 @@ class FFNN:
         # The feed forward algorithm
         for i in range(len(self.weights)):
             if i < len(self.weights) - 1:
-                z = a @ self.weights[i]
-                self.z_matrices.append(z)
+                z = a @ self.weights[i] + self.bias[i]
                 a = self.hidden_func(z)
-                # bias column again added to the data here
-                bias = np.ones((a.shape[0], 1)) * 0.01
-                a = np.hstack([bias, a])
+                self.z_matrices.append(z)
                 self.a_matrices.append(a)
             else:
                 try:
                     # a^L, the nodes in our output layers
-                    z = a @ self.weights[i]
+                    z = a @ self.weights[i] + self.bias[i]
                     a = self.output_func(z)
-                    self.a_matrices.append(a)
                     self.z_matrices.append(z)
+                    self.a_matrices.append(a)
                 except Exception as OverflowError:
                     print(
                         "OverflowError in fit() in FFNN\nHOW TO DEBUG ERROR: Consider lowering your learning rate or scheduler specific parameters such as momentum, or check if your input values need scaling"
@@ -350,47 +348,38 @@ class FFNN:
         """
         out_derivative = derivate(self.output_func)
         hidden_derivative = derivate(self.hidden_func)
+        cost_derivative = derivate(self.cost_func(t))
+
+        delta_l = t - self.a_matrices[-1]
+        delta_prev = t - self.a_matrices[-1]
 
         for i in range(len(self.weights) - 1, -1, -1):
             # delta terms for output
             if i == len(self.weights) - 1:
                 # for multi-class classification
-                if (
-                    self.output_func.__name__ == "softmax"
-                ):
-                    delta_matrix = self.a_matrices[i + 1] - t
+                if (self.output_func.__name__ == "softmax"):
+                    delta_l = t - self.a_matrices[i + 1]
                 # for single class classification
                 else:
-                    cost_func_derivative = grad(self.cost_func(t))
-                    delta_matrix = out_derivative(
-                        self.z_matrices[i + 1]
-                    ) * cost_func_derivative(self.a_matrices[i + 1])
+                    delta_l = out_derivative(self.z_matrices[i + 1]) * cost_derivative(self.a_matrices[i + 1])
 
             # delta terms for hidden layer
             else:
-                delta_matrix = (
-                    self.weights[i + 1][1:, :] @ delta_matrix.T
-                ).T * hidden_derivative(self.z_matrices[i + 1])
+                delta_l = delta_prev @ self.weights[i+1].T * hidden_derivative(self.a_matrices[i + 1])
 
             # calculate gradient
-            gradient_weights = self.a_matrices[i][:, 1:].T @ delta_matrix
-            gradient_bias = np.sum(delta_matrix, axis=0).reshape(
-                1, delta_matrix.shape[1]
-            )
+            gradient_weights = self.a_matrices[i].T @ delta_l
+            gradient_bias = np.sum(delta_l, axis=0)
 
             # regularization term
-            gradient_weights += self.weights[i][1:, :] * lam
-
-            # use scheduler
-            update_matrix = np.vstack(
-                [
-                    self.schedulers_bias[i].update_change(gradient_bias),
-                    self.schedulers_weight[i].update_change(gradient_weights),
-                ]
-            )
+            gradient_weights += self.weights[i] * lam
+            gradient_bias += self.bias[i] * lam
 
             # update weights and bias
-            self.weights[i] -= update_matrix
+            self.weights[i] -= self.schedulers_weight[i].update_change(gradient_weights)
+            self.bias[i] -= self.schedulers_bias[i].update_change(gradient_bias)
+
+            delta_prev = delta_l
 
     def _accuracy(self, prediction: np.ndarray, target: np.ndarray):
         """
