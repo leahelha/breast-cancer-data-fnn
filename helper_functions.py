@@ -19,10 +19,13 @@ def train_pred_FFNN(
         batches: int,
         epochs: int,
     ):
-    
+    '''Trains the given FFNN network for a grid of different learning rates (eta) and regularisation parameters (lmbda).
+    Returns the test MSE and R2 score for each combination of eta and lmbda.'''
+
     mse_vals = np.zeros((len(eta_vals), len(lmbda_vals)))
     r2_vals = np.zeros((len(eta_vals), len(lmbda_vals)))
 
+    # Do grid search of eta and lambda values
     for i in range(len(eta_vals)):
         for j in range(len(lmbda_vals)):
             network.reset_weights_and_bias()
@@ -46,20 +49,36 @@ def train_pred_skl(
         solver: Literal['lbfgs', 'sgd', 'adam'],
         batches: int,
         epochs: int,
+        regression: bool = True,
         seed: int = 10
     ):
-    
+    '''Trains either a scikit-learn regression network or a scikit-learn classification network
+    for a grid of different learning rates (eta) and regularisation parameters (lmbda).
+    Returns the test MSE and R2 score for each combination of eta and lmbda.'''
+
     mse_vals = np.zeros((len(eta_vals), len(lmbda_vals)))
     r2_vals = np.zeros((len(eta_vals), len(lmbda_vals)))
 
-    for i in range(len(eta_vals)):
-        for j in range(len(lmbda_vals)):
-            network = MLPRegressor(hidden_layers, activation, solver, lmbda_vals[j], eta_vals[i], epochs, batch_size = x_train.shape[0]//batches, random_state = seed)
-            network.fit(x_train, y_train.flatten())
-            y_pred = network.predict(x_test)
-            mse_vals[i][j] = mse(y_pred, y_test)
-            r2_vals[i][j] = r2(y_pred, y_test)
-    
+    if (regression): # if regression, use scikit-learn's regression neural network
+        # Do grid search of eta and lambda values
+        for i in range(len(eta_vals)):
+            for j in range(len(lmbda_vals)):
+                network = MLPRegressor(hidden_layers, activation, solver, lmbda_vals[j], eta_vals[i], epochs, batch_size = x_train.shape[0]//batches, random_state = seed)
+                network.fit(x_train, y_train.flatten())
+                y_pred = network.predict(x_test)
+                mse_vals[i][j] = mse(y_pred, y_test)
+                r2_vals[i][j] = r2(y_pred, y_test)
+
+    else: # else, use scikit-learn's classifier neural network
+        # Do grid search of eta and lambda values
+        for i in range(len(eta_vals)):
+            for j in range(len(lmbda_vals)):
+                network = MLPClassifier(hidden_layers, activation, solver, lmbda_vals[j], eta_vals[i], batch_size = x_train.shape[0]//batches, max_iter = epochs)
+                network.fit(x_train, y_train.flatten())
+                y_pred = network.predict(x_test)
+                mse_vals[i][j] = mse(y_pred, y_test)
+                r2_vals[i][j] = r2(y_pred, y_test)
+
     return mse_vals, r2_vals
 
 def plot_heatmap(
@@ -70,6 +89,7 @@ def plot_heatmap(
         yticks: Any,
         xticks: Any,
     ):
+    '''Creates heatmap of MSE or R2 data from grid search over learning rates and regularisation parameters.'''
 
     fig, ax = plt.subplots(figsize = (10, 8))
     sns.heatmap(data, annot = True, cmap = "viridis", square = True, yticklabels = yticks, xticklabels = xticks)

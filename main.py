@@ -46,7 +46,7 @@ z_test_norm = (z_test-z_mean)/z_std
 ### REGRESSION WITH NEURAL NETWORK ###
 
 # Create neural network and choose parameters
-network_shape = (xy.shape[1], 50, 1)
+network_shape = (xy.shape[1], 50, z.shape[1])
 network = FFNN(network_shape, sigmoid, lambda x: x, CostOLS, 10)
 scheduler = Scheduler.Adam(0, 0.9, 0.999)
 eta_vals = anp.logspace(-4,-1,4)
