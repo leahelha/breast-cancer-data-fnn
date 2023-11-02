@@ -16,6 +16,9 @@ class Scheduler:
     def reset(self):
         pass
 
+    def set_eta(self, eta):
+        self.eta = eta
+
 
 class Constant(Scheduler):
     def __init__(self, eta):
