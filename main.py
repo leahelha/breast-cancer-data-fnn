@@ -1,5 +1,9 @@
 import autograd.numpy as anp
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+
 from FFNN import FFNN
 from activation_functions import sigmoid
 from cost_functions import CostOLS
@@ -24,25 +28,41 @@ xy = anp.stack((anp.ravel(x_),anp.ravel(y_)), axis = -1) # formatting needed to 
 z = FrankeFunction(x_, y_)
 z_fit = z.reshape(-1,1)
 
-xy_mean = np.mean(xy)
-xy_std = np.std(xy)
-xy_norm = (xy-xy_mean)/xy_std
-z_fit_mean = np.mean(z_fit)
-z_fit_std = np.std(z_fit)
-z_fit_norm = (z_fit-z_fit_mean)/z_fit_std
+xy_train, xy_test, z_train, z_test = train_test_split(xy, z_fit, test_size = 0.2, random_state = 3) # random_state gives same partition across multiple function calls
+
+xy_mean = np.mean(xy_train)
+z_mean = np.mean(z_train)
+xy_std = np.std(xy_train)
+z_std = np.std(z_train)
+
+xy_train_norm = (xy_train-xy_mean)/xy_std
+z_train_norm = (z_train-z_mean)/z_std
+xy_test_norm = (xy_test-xy_mean)/xy_std
+z_test_norm = (z_test-z_mean)/z_std
 
 # Create neural network
-network = FFNN((xy.shape[1],50, 50, 1), sigmoid, lambda x: x, CostOLS, 10)
-eta_vals = anp.logspace(-4,-2,3)
-lmbda_vals = anp.logspace(-5,-1,5)
+network = FFNN((xy.shape[1], 50, 1), sigmoid, lambda x: x, CostOLS, 10)
+eta_vals = anp.logspace(-4,-1,4)
+lmbda_vals = anp.logspace(-5,0,6)
 
-for eta in eta_vals:
-    for lmbda in lmbda_vals:
-        # network.reset_weights_and_bias()
-        network.reset_weights()
-        sched_xor = Adam(eta, 0.9, 0.999)
-        network.fit(xy_norm, z_fit_norm, sched_xor, 1, 100, lmbda)
+mse = np.zeros((len(eta_vals), len(lmbda_vals)))
+
+for i in range(len(eta_vals)):
+    for j in range(len(lmbda_vals)):
+        network.reset_weights_and_bias()
+        sched_xor = Adam(eta_vals[i], 0.9, 0.999)
+        network.fit(xy_train_norm, z_train_norm, sched_xor, 1, 100, lmbda_vals[j])
+        z_pred = network.predict(xy_test_norm)
+        mse[i][j] = np.mean((z_pred - z_test_norm)**2)
+
 
         # skl_network = MLPRegressor(hidden_layer_sizes = (50), activation = 'logistic', solver = 'adam', alpha = lmbda, learning_rate_init = eta, max_iter = 100, random_state = 10)
         # skl_network.fit(xy, z.flatten())
         # print(f"Sklearn: {skl_network.score(xy, z.flatten())}")
+
+fig, ax = plt.subplots(figsize = (10, 8))
+sns.heatmap(mse, annot = True, cmap = "viridis", square = True, yticklabels = eta_vals, xticklabels = lmbda_vals)
+ax.set_title("Test MSE")
+ax.set_ylabel("$\eta$")
+ax.set_xlabel("$\lambda$")
+plt.savefig("plots/test.pdf")
