@@ -44,7 +44,7 @@ def train_pred_skl(
         y_test: np.ndarray,
         eta_vals: np.ndarray,
         lmbda_vals: np.ndarray,
-        hidden_layers: tuple(int),
+        hidden_layers: tuple[int],
         activation: Literal['relu', 'identity', 'logistic', 'tanh'],
         solver: Literal['lbfgs', 'sgd', 'adam'],
         batches: int,
@@ -107,3 +107,11 @@ def r2(y_tilde, y):
     a = np.sum((y-y_tilde)**2)
     b = np.sum((y-np.mean(y))**2)
     return 1 - a/b
+
+
+def save_parameters(parameters_file, file_path):
+    '''Saves the parameters for a given run of the FFNN model'''
+    filename = file_path / "parameters.txt"
+
+    with open(filename, "w") as outfile:
+        outfile.write(parameters_file)
