@@ -25,3 +25,4 @@ def CostCrossEntropy(target):
         return -(1.0 / target.size) * np.sum(target * np.log(X + 10e-10))
 
     return func
+
