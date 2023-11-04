@@ -21,7 +21,8 @@ import autograd.numpy as anp
 This task is done in collaboration, by Ida Monsen, Vetle Henrik Hvoslef and Leah Hansen
 
 """
-
+np.random.seed(11)
+seed(11)
 
 class regression_class:
     '''Does OLS, Ridge and Lasso regression with a polynomial model of degree up to n_deg_max.
@@ -624,7 +625,7 @@ xy = np.stack((np.ravel(x_),np.ravel(y_)), axis = -1) # formatting needed to set
 z = FrankeFunction(x_, y_)
 
 # Making our design matrix using Project 1 class
-n_deg_max = 5 # max polynomial degree
+n_deg_max = 12 # max polynomial degree
 lmbda = [0.0001, 0.001, 0.01, 0.1, 1.0] # lambdas to try with Ridge regression
 model = regression_class(xy, z.flatten(), n_deg_max, lmbda)
 
@@ -695,17 +696,22 @@ def gradients(beta, n, X, z, lamba=0, Auto=False):
     return gradient
 
 
-def gd_momentum(beta, X, z, method='adagrad', iterations=1000, rate=1, Auto=False):
+def gd_momentum(beta, X, z, method='adagrad', iterations=1000, rate=1, Auto=False):   #beta ***
     '''
     Function which performs Gradient Descent with momentum
     beta is the beta parameter
     X is the design matrix
-    z is the true model
+    z is the target data
     iterations has a default of 1000 but can be changed
     rate is a factor you can add to the learning rate eta
     '''
+    # b_shape = np.shape(X)[1]
+    # # Initiating a random beta
+    # beta = np.random.randn(b_shape,)
+    z = np.ravel(z)
+
     n = X.shape[0]  # Number of samples
-    beta_list = list()
+    #beta_list = list()
 
     change = 0
     momentum = 0.9    #IDEAL MOMENTUM
@@ -720,7 +726,7 @@ def gd_momentum(beta, X, z, method='adagrad', iterations=1000, rate=1, Auto=Fals
     mom1 = 0 
     mom2 = 0
     t = 0
-    z = np.ravel(z)
+    
     Giter = 0
     
 
@@ -735,7 +741,7 @@ def gd_momentum(beta, X, z, method='adagrad', iterations=1000, rate=1, Auto=Fals
             (20,)
         """
 
-        beta_list.append(beta)
+        #beta_list.append(beta)
 
         if method == 'adagrad':
             Giter += gradient * gradient
@@ -774,25 +780,36 @@ def learning_schedule(t, t0, t1):
     return t0/(t+t1)
 
 
-def sgd_momentum(beta, X, z, method='adagrad', M=32, epochs=1, Auto=False):   #*** Epochs
+def sgd_momentum(X, z, method='adagrad', M=32, epochs=1, Auto=False):   #*** Epochs
     '''
     Function which performs Stochastic Gradient Descent with momentum
     beta is the beta parameter
     X is the design matrix
-    z is the true model
-    iterations has a default of 1000 but can be changed
-    rate is a factor you can add to the learning rate eta
+    z is the target data
+    
     M is the size of the mini-batch used in each iteration
     epochs is number of epochs
     '''
+    print('X shape and z shape')
+    print(np.shape(X))
+    print(np.shape(z))
+    z = np.ravel(z)
+    X_train, X_test, z_train, z_test = train_test_split(X, z, test_size=0.2) 
+
+    b_shape = np.shape(X_train)[1]
+    # Initiating a random beta
+    beta = np.random.randn(b_shape,)
+
+    print('shape is')
+    print(np.shape(beta))
     beta_list = list()
 
     change = 0
-    momentum = 0.9  # IDEAL MOMENTUM
-    n = X.shape[0]  # Number of samples
+    momentum = 0.8  # IDEAL MOMENTUM
+    n = X_train.shape[0]  # Number of samples
     m = int(n/M) #number of mini-batches
    
-    t0, t1 = 5, 50  #scheduling constants for learning rate
+    t0, t1 = 80, 50  #scheduling constants for learning rate
     t = 0 
     mom1 = 0
     mom2 = 0
@@ -802,8 +819,8 @@ def sgd_momentum(beta, X, z, method='adagrad', M=32, epochs=1, Auto=False):   #*
         for i in range(m):
             indices = np.random.choice(n, size=M, replace=False)  # Randomly select indices for the batch
 
-            X_batch = X[indices]
-            z_batch = np.ravel(z)[indices] 
+            X_batch = X_train[indices]
+            z_batch = z_train[indices] 
             
             gradient = gradients(beta, M, X_batch, z_batch, lamba=0, Auto=Auto)
             
@@ -815,24 +832,32 @@ def sgd_momentum(beta, X, z, method='adagrad', M=32, epochs=1, Auto=False):   #*
             if method == 'adagrad':
                 Giter += gradient * gradient
                 change, Giter = AdaGrad(change, gradient, eta, Giter, delta=1e-8, momentum=momentum)
+
+                #change = eta*gradient + momentum*change
+                beta -= change
                 
             elif method == 'rmsprop':
                 change, Giter = RMSprop(change, gradient, eta, Giter, beta=0.9, delta=1e-8, momentum=0)
+                beta -= change
                     
             elif method == 'adam':
                 t += 1
                 change, mom1, mom2 = ADAM(change, gradient, eta, mom1, mom2, t, beta1=0.9, beta2=0.999, delta=1e-8, momentum=0)
              
-            beta -= change
+                beta -= change
         
         save_e = e
 
     
+    predict_test = X_test.dot(beta)
     predict = X.dot(beta)
-    mse = 1/(n*n) * np.sum((np.ravel(z)-predict)**2)
+
+    mse = np.mean( (np.ravel(z_test)-predict_test)**2)#1/(n*n) * np.sum(  (np.ravel(z_test)-predict_test)**2)
+    abs_error_avg= 1/(n*n)*np.sum(np.abs(np.ravel(z_test)-predict_test)) 
+
     info = [f'Method {method} \n mse = {mse}, momentum = {momentum}, last learning rate = {eta}, batch size = {M}, epochs = {save_e}']
     
-    print(f'MSE for stochastic gradient descent with batches is {mse} \n')
+    print(f'MSE for stochastic gradient descent with batches is {mse} \n abs error is {abs_error_avg}')
     print(f'{info}\n')
     return predict, beta, mse, info
 
@@ -840,47 +865,55 @@ def sgd_momentum(beta, X, z, method='adagrad', M=32, epochs=1, Auto=False):   #*
 
 '''Function calls'''
 
-run = gd_momentum(beta, X, z, method='adagrad', iterations=100000, rate=3, Auto=True)
+
+
+run = gd_momentum(beta, X, z, method='adagrad', iterations=100000, rate=3, Auto=False)
 info = run[3]
 predict = run[0] #Our model for GD using OLS, this version of predict has a shape (n*n,). It is 1D
 
 
 
-sgd = sgd_momentum(beta, X, z, method= 'adagrad', M=32, epochs=50, Auto=True)
+sgd = sgd_momentum(X, z, method= 'adagrad', M=32, epochs=50, Auto=False)
 
 sgd_predict = sgd[0]
 sgd_info = sgd[3]
+
+print(np.shape(sgd_predict))
 
 
 
 '''Contour plot Stochastic Gradient Descent w mini batches'''
 
-sgd_predicted_grid = sgd_predict.reshape(n, n) #We need to reshape the predict back so that we can plot it on a grid
+sgd_predicted_grid = np.reshape(sgd_predict,(n, n)) #We need to reshape the predict back so that we can plot it on a grid
 
 fig, ax = plt.subplots(1, 2, figsize=(12, 6))
 
-# Contour plot for predicted model using Gradient Descent
-sgd_contour1 = ax[0].contourf(x_, y_, sgd_predicted_grid, cmap='viridis')
+# Contour plot for z (Actual Franke model)
+sgd_contour1 = ax[0].contourf(x_, y_, z, cmap='viridis')
 
 fig.colorbar(sgd_contour1, ax=ax[0])
+
 ax[0].set_xlabel('x')
 ax[0].set_ylabel('y')
-ax[0].set_title(f'Stochastic Gradient Descent Prediction with mini batches')
 
-# Contour plot for z (Actual Franke model)
-sgd_contour2 = ax[1].contourf(x_, y_, z, cmap='viridis')
+ax[0].set_title(f'Actual Franke Model')
+
+# Contour plot for predicted model using Gradient Descent
+sgd_contour2 = ax[1].contourf(x_, y_, sgd_predicted_grid, cmap='viridis')
 
 fig.colorbar(sgd_contour2, ax=ax[1])
 ax[1].set_xlabel('x')
 ax[1].set_ylabel('y')
-ax[1].set_title(f'Actual Franke Model')
+
+ax[1].set_title(f'Stochastic Gradient Descent Prediction with mini batches')
 
 #fig.savefig(f'SGD_comparison_franke_contour {sgd_info}.pdf')
 plt.show()
 
+
 '''Contour plot Gradient Descent'''
 
-predicted_grid = predict.reshape(n, n) #We need to reshape the predict back so that we can plot it on a grid
+predicted_grid = np.reshape(predict, (n, n)) #We need to reshape the predict back so that we can plot it on a grid
 
 fig, ax = plt.subplots(1, 2, figsize=(12, 6))
 
@@ -920,11 +953,63 @@ ax[1].set_xlabel('x')
 ax[1].set_ylabel('y')
 ax[1].set_title('Actual Franke model')
 #fig.savefig(f'GD_comparison_franke_colormesh {info}.pdf')
-#plt.show()
+plt.show()
 
 
 """
 Question for TA:
 Should momentum ever be added to the ADAM and/or RMSprop methods?
+
+
+- ADAM and RMSprop edit the gradient and implicitly then change the learning rate, but not explicitly
+        -> Not explicitly changing eta. Is that oki?
+
+
+        
+
+- Lag bash script for å automatisere:
+        
+-Grid search:
+  -> lambda - regularization parameter
+  -> eta - learning rate
+- epochs(iterations) -> øker antall noder til MSE ikke blir bedre
+                     -> legg til lag
+
+- Bytt aktiveringsfunksjon
+
+
+Leah:
+- Gjør oppg e)
+
+
+
+Lørdag:
+- Integrere a i NN stuff
+- fullføre oppg e
+
+- Produser resultater 
+
+- Start skriving: 
+    -> Strukturer ferdig teori
+    -> Legg inn og beskriv Resultater
+    -> Kan gi notater til diskusjon
+    -> Fullfør abstrakt
+    
+
+Søndag:
+- Fullfør skriving:
+    -> Fullfør teori
+
+    -> Start og fullfør metode
+    -> Skriv en draft intro og få ChGPT til å fikse den
+
+    -> Skriv en draft diskusjon og konklusjon
+
+
+Sjekkliste:
+- Har vi nevnt alle oppgavene?
+- Har alle figurer akse labels og figurtekts?
+- Nevner vi all relevant teori?
+
 
 """
