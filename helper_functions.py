@@ -104,7 +104,6 @@ def train_pred_skl(
                 network.fit(x_train, y_train.flatten())
                 acc_vals[i][j] = network.score(x_test, y_test)
 
-
 def plot_heatmap(
         data: np.ndarray,
         save_path: str,
@@ -131,6 +130,9 @@ def r2(y_tilde, y):
     a = np.sum((y-y_tilde)**2)
     b = np.sum((y-np.mean(y))**2)
     return 1 - a/b
+
+def accuracy(y_tilde, y):
+    return np.average((y_tilde == y))
 
 def save_parameters(parameters_file, file_path):
     '''Saves the parameters for a given run of the FFNN model'''
@@ -385,7 +387,6 @@ def logreg_cost(n, beta, X, z, L):
     cost = -np.sum(z*(beta@X) - np.log(1 + np.exp(beta@X)))
     return cost
 
-
 ''' Change this to gradient descent '''
 def logreg_gd(X, z, method='adagrad', lamba=2, iterations=1000, rate=1):   #*** Epochs
     '''
@@ -415,11 +416,6 @@ def logreg_gd(X, z, method='adagrad', lamba=2, iterations=1000, rate=1):   #*** 
 
     change = 0
     momentum = 0.9 #0.9   
-    Giter = 0
-    t = 0
-    mom1 = 0
-    mom2 = 0
-
 
     # Hessian matrix
     H = (2.0/n)* X.T @ X 
@@ -449,15 +445,17 @@ def logreg_gd(X, z, method='adagrad', lamba=2, iterations=1000, rate=1):   #*** 
         beta -= sched.update_change(gradient)
        
     predict_test = X_test.dot(beta)
+    predict_test = np.where(predict_test > 0.5, 1, 0)
     predict = X.dot(beta)
+    predict = np.where(predict > 0.5, 1, 0)
 
-    mse_val = mse(z_test, predict_test)
+    acc_score = accuracy(z_test, predict_test)
     
-    info = f'Method {method} \n iterations = {save_iter}', f'momentum = {momentum}', f'learning rate = {eta}', f'mse= {mse_val}'
+    info = f'Method {method} \n iterations = {save_iter}', f'momentum = {momentum}', f'learning rate = {eta}', f'acc_score= {acc_score}'
     
-    print(f'MSE for stochastic gradient descent with batches is {mse_val} \n')
+    print(f'Accuracy for stochastic gradient descent with batches is {acc_score} \n')
     print(f'{info}\n')
-    return predict, beta, mse_val, info
+    return predict, beta, acc_score, info
 
 
 
@@ -465,7 +463,7 @@ if __name__=="__main__":
     X,y = load_breast_cancer(return_X_y=True)
     print(np.shape(X))
 
-    predict, beta, mse_val, info = logreg_gd(X, y, method='adagrad', lamba=30, iterations=100000, rate=60)
+    predict, beta, acc_score, info = logreg_gd(X, y, method='adagrad', lamba=30, iterations=100000, rate=60)
 
 
 """
