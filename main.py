@@ -151,7 +151,7 @@ for hidden_layer in model_shape:
                 file_path.mkdir(parents=True, exist_ok=True)
 
                 network = FFNN(network_shape, act_func, sigmoid, CostCrossEntropy, 10)
-                mse_FFNN, r2_FFNN = train_pred_FFNN(network, X_train, X_test, y_train, y_test, eta_vals, lmbda_vals, scheduler, batches, epochs)
+                accuracy_FFNN = train_pred_FFNN(network, X_train, X_test, y_train, y_test, eta_vals, lmbda_vals, scheduler, batches, epochs, regression = False)
                 parameters_file = f"""Parameters for the FFNN:
 problem = {problem}
 batches = {batches} 
@@ -160,8 +160,6 @@ network shape = {network_shape}
 - First layer: {network_shape[1]}
 - Second layer: {network_shape[2]}
 Activation function for hidden layers = {act_func.__name__}
-Accuarcy score = {...}
 """
                 save_parameters(parameters_file, file_path)
-                plot_heatmap(mse_FFNN, file_path / "mse_FFNN.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
-                plot_heatmap(r2_FFNN, file_path / "r2_FFNN.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
+                plot_heatmap(accuracy_FFNN, file_path / "accuracy_FFNN.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
