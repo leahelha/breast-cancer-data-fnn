@@ -171,10 +171,10 @@ class FFNN:
                     val_errors[e] = val_error
 
                 if self.classification:
-                    train_acc = self._accuracy(self.predict(X), t)
+                    train_acc = self.accuracy(self.predict(X), t)
                     train_accs[e] = train_acc
                     if val_set:
-                        val_acc = self._accuracy(pred_val, t_val)
+                        val_acc = self.accuracy(pred_val, t_val)
                         val_accs[e] = val_acc
 
                 # printing progress bar
@@ -381,7 +381,7 @@ class FFNN:
 
             delta_prev = delta_l
 
-    def _accuracy(self, prediction: np.ndarray, target: np.ndarray):
+    def accuracy(self, prediction: np.ndarray, target: np.ndarray):
         """
         Description:
         ------------
