@@ -66,12 +66,12 @@ problem = "regression"
 for hidden_layer in model_shape:
     if isinstance(hidden_layer, int):
         layer_name = f"hidden_layers_{hidden_layer}"
-        network_shape = (xy.shape[1], hidden_layer, z.shape[1])
+        network_shape = (xy.shape[1], hidden_layer, z_fit.shape[1])
     elif isinstance(hidden_layer, tuple):
         layer_name = "hidden_layers"
         for layer in hidden_layer:
             layer_name = layer_name + f"_{layer}"
-        network_shape = (xy.shape[1], *hidden_layer, z.shape[1])
+        network_shape = (xy.shape[1], *hidden_layer, z_fit.shape[1])
 
     for batches in batches_vals:
         batch_name = f"batches_{batches}"
