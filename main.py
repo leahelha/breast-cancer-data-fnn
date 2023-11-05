@@ -61,12 +61,12 @@ problem = "regression"
 for hidden_layer in model_shape:
     if isinstance(hidden_layer, int):
         layer_name = f"hidden_layers_{hidden_layer}"
-        network_shape = (xy.shape[1], hidden_layer, z.shape[1])
+        network_shape = (xy.shape[1], hidden_layer, z_fit.shape[1])
     elif isinstance(hidden_layer, tuple):
         layer_name = "hidden_layers"
         for layer in hidden_layer:
             layer_name = layer_name + f"_{layer}"
-        network_shape = (xy.shape[1], *hidden_layer, z.shape[1])
+        network_shape = (xy.shape[1], *hidden_layer, z_fit.shape[1])
 
     for batches in batches_vals:
         batch_name = f"batches_{batches}"
@@ -82,7 +82,7 @@ epochs = {epochs}
 network shape = {network_shape}
 """
                 save_parameters(parameters_file, file_path)
-                import ipdb;ipdb.set_trace()
+                # import ipdb;ipdb.set_trace()
 
                 network = FFNN(network_shape, act_func, lambda x: x, CostOLS, 10)
                 mse_FFNN, r2_FFNN = train_pred_FFNN(network, xy_train_norm, xy_test_norm, z_train_norm, z_test_norm, eta_vals, lmbda_vals, scheduler, batches, epochs)

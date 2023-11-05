@@ -19,7 +19,6 @@ class Scheduler:
     def set_eta(self, eta):
         self.eta = eta
 
-
 class Constant(Scheduler):
     def __init__(self, eta):
         super().__init__(eta)
@@ -29,7 +28,6 @@ class Constant(Scheduler):
     
     def reset(self):
         pass
-
 
 class Momentum(Scheduler):
     def __init__(self, eta: float, momentum: float):
@@ -44,7 +42,6 @@ class Momentum(Scheduler):
     def reset(self):
         pass
 
-
 class Adagrad(Scheduler):
     def __init__(self, eta):
         super().__init__(eta)
@@ -54,18 +51,14 @@ class Adagrad(Scheduler):
         delta = 1e-8  # avoid division ny zero
 
         if self.G_t is None:
-            self.G_t = np.zeros((gradient.shape[0], gradient.shape[0]))
+            self.G_t = np.zeros_like(gradient)
 
-        self.G_t += gradient @ gradient.T
+        self.G_t += gradient * gradient
 
-        G_t_inverse = 1 / (
-            delta + np.sqrt(np.reshape(np.diagonal(self.G_t), (self.G_t.shape[0], 1)))
-        )
-        return self.eta * gradient * G_t_inverse
+        return self.eta * gradient * 1 / (delta + np.sqrt(self.G_t))
 
     def reset(self):
         self.G_t = None
-
 
 class AdagradMomentum(Scheduler):
     def __init__(self, eta, momentum):
@@ -78,56 +71,95 @@ class AdagradMomentum(Scheduler):
         delta = 1e-8  # avoid division ny zero
 
         if self.G_t is None:
-            self.G_t = np.zeros((gradient.shape[0], gradient.shape[0]))
+            self.G_t = np.zeros_like(gradient)
+        
+        self.G_t += gradient * gradient
 
-        self.G_t += gradient @ gradient.T
-
-        G_t_inverse = 1 / (
-            delta + np.sqrt(np.reshape(np.diagonal(self.G_t), (self.G_t.shape[0], 1)))
-        )
-        self.change = self.change * self.momentum + self.eta * gradient * G_t_inverse
+        self.change = self.change * self.momentum + self.eta * gradient * 1 / (delta + np.sqrt(self.G_t))
         return self.change
 
     def reset(self):
         self.G_t = None
 
-
 class RMS_prop(Scheduler):
-    def __init__(self, eta, rho):
+    def __init__(self, eta, beta):
         super().__init__(eta)
-        self.rho = rho
-        self.second = 0.0
+        self.beta = beta
+        self.Giter = 0.0
 
     def update_change(self, gradient):
         delta = 1e-8  # avoid division ny zero
-        self.second = self.rho * self.second + (1 - self.rho) * gradient * gradient
-        return self.eta * gradient / (np.sqrt(self.second + delta))
+
+        self.Giter = self.beta * self.Giter + (1 - self.beta) * (gradient ** 2)
+        update_gradient = ((self.eta* gradient) / (np.sqrt(self.Giter) + delta))
+        return update_gradient
 
     def reset(self):
-        self.second = 0.0
+        self.Giter = 0.0
 
+class RMS_propMomentum(Scheduler):
+    def __init__(self, eta, beta, momentum):
+        super().__init__(eta)
+        self.beta = beta
+        self.Giter = 0.0
+        self.momentum = momentum
+        self.change = 0
+
+    def update_change(self, gradient):
+        delta = 1e-8  # avoid division ny zero
+
+        self.Giter = self.beta * self.Giter + (1 - self.beta) * (gradient ** 2)
+        update_gradient = self.change * self.momentum + ((self.eta* gradient) / (np.sqrt(self.Giter) + delta))
+        return update_gradient
+
+    def reset(self):
+        self.Giter = 0.0
 
 class Adam(Scheduler):
-    def __init__(self, eta, rho, rho2):
+    def __init__(self, eta, beta1, beta2):
         super().__init__(eta)
-        self.rho = rho
-        self.rho2 = rho2
-        self.moment = 0
-        self.second = 0
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.mom1 = 0
+        self.mom2 = 0
         self.n_epochs = 1
 
     def update_change(self, gradient):
         delta = 1e-8  # avoid division ny zero
+        self.mom1 = self.beta1 * self.mom1 + (1 - self.beta1) * gradient  # Update 1st moment vector
+        self.mom2 = self.beta2 * self.mom2 + (1 - self.beta2) * (gradient ** 2)  # Update 2nd moment vector
+        mom1_corrected = self.mom1 / (1 - self.beta1 ** self.n_epochs)  # Bias-corrected 1st moment estimate
+        mom2_corrected = self.mom2 / (1 - self.beta2 ** self.n_epochs)  # Bias-corrected 2nd moment estimate
 
-        self.moment = self.rho * self.moment + (1 - self.rho) * gradient
-        self.second = self.rho2 * self.second + (1 - self.rho2) * gradient * gradient
-
-        moment_corrected = self.moment / (1 - self.rho**self.n_epochs)
-        second_corrected = self.second / (1 - self.rho2**self.n_epochs)
-
-        return self.eta * moment_corrected / (np.sqrt(second_corrected + delta))
+        return (self.eta / (np.sqrt(mom2_corrected) + delta)) * mom1_corrected
 
     def reset(self):
         self.n_epochs += 1
-        self.moment = 0
-        self.second = 0
+        self.mom1 = 0
+        self.mom2 = 0
+
+class AdamMomentum(Scheduler):
+    def __init__(self, eta, beta1, beta2, momentum):
+        super().__init__(eta)
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.mom1 = 0
+        self.mom2 = 0
+        self.n_epochs = 1
+        self.momentum = momentum
+        self.change = 0
+
+    def update_change(self, gradient):
+        delta = 1e-8  # avoid division ny zero
+        self.mom1 = self.beta1 * self.mom1 + (1 - self.beta1) * gradient  # Update 1st moment vector
+        self.mom2 = self.beta2 * self.mom2 + (1 - self.beta2) * (gradient ** 2)  # Update 2nd moment vector
+        mom1_corrected = self.mom1 / (1 - self.beta1 ** self.n_epochs)  # Bias-corrected 1st moment estimate
+        mom2_corrected = self.mom2 / (1 - self.beta2 ** self.n_epochs)  # Bias-corrected 2nd moment estimate
+
+        self.change = self.change * self.momentum + (self.eta / (np.sqrt(mom2_corrected) + delta)) * mom1_corrected
+        return self.change
+
+    def reset(self):
+        self.n_epochs += 1
+        self.mom1 = 0
+        self.mom2 = 0
