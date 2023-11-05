@@ -360,6 +360,10 @@ def sgd_momentum(X, z, method='adagrad', M=32, epochs=1, Auto=False):   #*** Epo
 
 Can I skip the cost function definition?
 """
+
+np.random.seed(11)
+
+
 def learning_schedule(t, t0, t1):
     return t0/(t+t1)
 
@@ -372,13 +376,16 @@ def logreg_cost(n, beta, X, z, L):
 
 
 ''' Change this to gradient descent '''
-def logreg_gd(X, z, method='adagrad', lamba=0, iterations=1000, rate=1):   #*** Epochs
+def logreg_gd(X, z, method='adagrad', lamba=2, iterations=1000, rate=1):   #*** Epochs
     '''
     Function which performs Stochastic Gradient Descent with momentum
     beta is the beta parameter
     X is the design matrix
     z is the target data
     iterations has a default of 1000 but can be changed
+    lamba is the regularization parameter lambda used in the cross entropy cost function
+        -> We have chosen to use the analytical gradient, thus you will not find a cost function with the lamba parameter
+
     rate is a factor you can add to the learning rate eta
     M is the size of the mini-batch used in each iteration
     epochs is number of epochs
@@ -396,7 +403,13 @@ def logreg_gd(X, z, method='adagrad', lamba=0, iterations=1000, rate=1):   #*** 
     #beta_list = list()
 
     change = 0
-    momentum = 0.9    #IDEAL MOMENTUM
+    momentum = 0.9 #0.9   
+    Giter = 0
+    t = 0
+    mom1 = 0
+    mom2 = 0
+
+
     # Hessian matrix
     H = (2.0/n)* X.T @ X 
     # Get the eigenvalues
@@ -405,9 +418,11 @@ def logreg_gd(X, z, method='adagrad', lamba=0, iterations=1000, rate=1):   #*** 
     # Attempting to find an optimal learning rate
     eta = rate*(1.0/np.max(EigValues))  # learning rate   #IDEAL rate = 3, or 1
     
+    
     for i in range(iterations):
-        gradient =  grad(logreg_cost)(n, beta, X_train, z_train, lamba) # -X_batch.T @ (z_batch -( 1.0 / (1 + np.exp(-z)))) # CHECK SIGMOID FUNC
-        #gradient = -X_batch.T @ (z_batch -( 1.0 / (1 + np.exp(-z_batch)))) # CHECK SIGMOID FUNC
+        #gradient =  grad(logreg_cost)(n, beta, X_train, z_train, lamba) # -X_batch.T @ (z_batch -( 1.0 / (1 + np.exp(-z)))) # CHECK SIGMOID FUNC
+
+        gradient = -X_train.T @ (z_train -( 1.0 / (1 + np.exp(-z_train)))) + 2*lamba*beta # CAN USE beta.T
 
         save_iter = i
         
@@ -433,8 +448,9 @@ def logreg_gd(X, z, method='adagrad', lamba=0, iterations=1000, rate=1):   #*** 
             
             beta -= change
         
-        if np.linalg.norm(change) < 1e-3:
-            break
+        # if np.linalg.norm(change) < 1e-3:
+        #     print(f'Change is {change}')
+        #     break
        
     predict_test = X_test.dot(beta)
     predict = X.dot(beta)
@@ -448,9 +464,21 @@ def logreg_gd(X, z, method='adagrad', lamba=0, iterations=1000, rate=1):   #*** 
     return predict, beta, mse, info
 
 
-X,y = load_breast_cancer(return_X_y=True)
-print(np.shape(X))
 
-predict, beta, mse, info = logreg_gd(X, y, method='adagrad', lamba=0, iterations=50000, rate=3)
+if __name__=="__main__":
+    X,y = load_breast_cancer(return_X_y=True)
+    print(np.shape(X))
 
-print(info)
+    predict, beta, mse, info = logreg_gd(X, y, method='adagrad', lamba=30, iterations=100000, rate=60)
+
+
+"""
+Best so far:
+('Method adagrad \n iterations = 99999', 'momentum = 0.9', 'learning rate = 1.20014116045837e-05', 'mse= 43076.029628381344'), rate = 50
+
+('Method adagrad \n iterations = 99999', 'momentum = 0.9', 'learning rate = 1.6801976246417182e-05', 'mse= 42441.838602851516'), rate = 70
+
+('Method adagrad \n iterations = 99999', 'momentum = 0.9', 'learning rate = 1.440169392550044e-05', 'mse= 41388.257435600455'), rate = 60   #BEST LEARNING RATE
+
+"""
+
