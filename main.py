@@ -2,11 +2,12 @@ import autograd.numpy as anp
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
+from sklearn.datasets import load_breast_cancer
 from pathlib import Path
 
 from FFNN import FFNN
 from activation_functions import sigmoid, RELU, LRELU
-from cost_functions import CostOLS
+from cost_functions import CostOLS, CostCrossEntropy
 import Scheduler
 from helper_functions import train_pred_FFNN, train_pred_skl, plot_heatmap, save_parameters
 ### DATA SETUP ###
@@ -29,7 +30,11 @@ z = FrankeFunction(x_, y_)
 z_fit = z.reshape(-1,1)
 
 # Split into training and test
-xy_train, xy_test, z_train, z_test = train_test_split(xy, z_fit, test_size = 0.2, random_state = 3) # random_state gives same partition across multiple function calls
+test_size = 0.2
+random_state = 3
+xy_train, xy_test, z_train, z_test = train_test_split(xy, z_fit, test_size = test_size, random_state = random_state) # random_state gives same partition across multiple function calls
+
+
 
 # Normalise data
 xy_mean = np.mean(xy_train)
@@ -74,15 +79,18 @@ for hidden_layer in model_shape:
             epoch_name = f"epochs_{epochs}"
             for act_func in activation_functions:
                 act_name = f"act_func_{act_func.__name__}"
-                file_path = root_path / "plots" / problem / layer_name / act_name
+                file_path = root_path / "plots" / problem / layer_name / batch_name / epoch_name / act_name
                 file_path.mkdir(parents=True, exist_ok=True)
                 parameters_file = f"""Parameters for the FFNN:
+problem = {problem}
 batches = {batches} 
 epochs = {epochs}
 network shape = {network_shape}
+- First layer: {network_shape[1]}
+- Second layer: {network_shape[2]}
+Activation function for hidden layers = {act_func.__name__}
 """
                 save_parameters(parameters_file, file_path)
-                import ipdb;ipdb.set_trace()
 
                 network = FFNN(network_shape, act_func, lambda x: x, CostOLS, 10)
                 mse_FFNN, r2_FFNN = train_pred_FFNN(network, xy_train_norm, xy_test_norm, z_train_norm, z_test_norm, eta_vals, lmbda_vals, scheduler, batches, epochs)
@@ -90,17 +98,29 @@ network shape = {network_shape}
                 plot_heatmap(r2_FFNN, file_path / "r2_FFNN.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
 
                 # Using Scikit-Learn for the sigmoid activation functions:
-                if act_func.__name__ == "sigmoid":
+                if act_func.__name__ == "sigmoid": # TODO: Ordne med Sklearn, ikke konvergerer
                     mse_skl, r2_skl = train_pred_skl(xy_train_norm, xy_test_norm, z_train_norm, z_test_norm, eta_vals, lmbda_vals, network_shape[1:-1], 'logistic', 'adam', batches, epochs)
                     plot_heatmap(mse_skl, file_path / "mse_skl.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
                     plot_heatmap(r2_skl, file_path / "r2_skl.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
 
+### DATA SETUP ###
+X, y = load_breast_cancer(return_X_y = True)
+y_fit = y.reshape(-1, 1)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = test_size, random_state = random_state)
 
 ### CLASSIFICATION WITH NEURAL NETWORK ###
 
 # Create neural network and choose parameters
-model_shape = [(50)] # TODO: Gjør at man kan øke med sett lengde en eller 2 idk
-# TODO: Legg til tqdm progress bar
+model_shape = []
+d_layer = 5
+for i in range(0, 50 + 1, d_layer):
+    first_layer = 50
+    if i == 0:
+        second_layer = 1
+    else:
+        second_layer = i
+    model_shape.append((first_layer, second_layer))
+
 scheduler = Scheduler.Adam(0, 0.9, 0.999)
 eta_vals = anp.logspace(-4,-1,4)
 lmbda_vals = anp.logspace(-5,0,6)
@@ -114,27 +134,34 @@ problem = "classification"
 for hidden_layer in model_shape:
     if isinstance(hidden_layer, int):
         layer_name = f"hidden_layers_{hidden_layer}"
-        network_shape = (xy.shape[1], hidden_layer, z.shape[1])
+        network_shape = (X.shape[1], hidden_layer, 1)
     elif isinstance(hidden_layer, tuple):
         layer_name = "hidden_layers"
         for layer in hidden_layer:
             layer_name = layer_name + f"_{layer}"
-        network_shape = (xy.shape[1], *hidden_layer, z.shape[1])
+        network_shape = (X.shape[1], *hidden_layer, 1)
 
     for batches in batches_vals:
         batch_name = f"batches_{batches}"
         for epochs in epochs_vals:
             epoch_name = f"epochs_{epochs}"
             for act_func in activation_functions:
-                act_name = f"act_func_{act_func}"
-                file_path = root_path / "plots" / problem / layer_name / act_name.__name__
+                act_name = f"act_func_{act_func.__name__}"
+                file_path = root_path / "plots" / problem / layer_name / batch_name / epoch_name / act_name
+                file_path.mkdir(parents=True, exist_ok=True)
+
+                network = FFNN(network_shape, act_func, sigmoid, CostCrossEntropy, 10)
+                mse_FFNN, r2_FFNN = train_pred_FFNN(network, X_train, X_test, y_train, y_test, eta_vals, lmbda_vals, scheduler, batches, epochs)
                 parameters_file = f"""Parameters for the FFNN:
+problem = {problem}
 batches = {batches} 
 epochs = {epochs}
+network shape = {network_shape}
+- First layer: {network_shape[1]}
+- Second layer: {network_shape[2]}
+Activation function for hidden layers = {act_func.__name__}
+Accuarcy score = {...}
 """
-                save_parameters(parameters_file)
-
-                network = FFNN(network_shape, act_func, lambda x: x, CostOLS, 10)
-                mse_FFNN, r2_FFNN = train_pred_FFNN(network, xy_train_norm, xy_test_norm, z_train_norm, z_test_norm, eta_vals, lmbda_vals, scheduler, batches, epochs)
+                save_parameters(parameters_file, file_path)
                 plot_heatmap(mse_FFNN, file_path / "mse_FFNN.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
                 plot_heatmap(r2_FFNN, file_path / "r2_FFNN.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
