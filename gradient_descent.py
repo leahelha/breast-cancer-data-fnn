@@ -696,7 +696,7 @@ def gradients(beta, n, X, z, lamba=0, Auto=False):
     return gradient
 
 
-def gd_momentum(beta, X, z, method='adagrad', iterations=1000, rate=1, Auto=False):   #beta ***
+def gd_momentum(beta, X, z, method='adagrad', lamba=0, iterations=1000, rate=1, Auto=False):   #beta ***
     '''
     Function which performs Gradient Descent with momentum
     beta is the beta parameter
@@ -709,14 +709,15 @@ def gd_momentum(beta, X, z, method='adagrad', iterations=1000, rate=1, Auto=Fals
     # # Initiating a random beta
     # beta = np.random.randn(b_shape,)
     z = np.ravel(z)
+    X_train, X_test, z_train, z_test = train_test_split(X, z, test_size=0.2) 
 
-    n = X.shape[0]  # Number of samples
+    n = X_train.shape[0]  # Number of samples
     #beta_list = list()
 
     change = 0
     momentum = 0.9    #IDEAL MOMENTUM
     # Hessian matrix
-    H = (2.0/n)* X.T @ X
+    H = (2.0/n)* X.T @ X 
     # Get the eigenvalues
     EigValues, EigVectors = np.linalg.eig(H)
     
@@ -733,7 +734,7 @@ def gd_momentum(beta, X, z, method='adagrad', iterations=1000, rate=1, Auto=Fals
 
     for i in range(iterations):
         
-        gradient = gradients(beta, n, X, z, lamba=0, Auto=Auto)
+        gradient = gradients(beta, n, X_train, z_train, lamba=0, Auto=Auto)
         
 
         """
@@ -764,9 +765,11 @@ def gd_momentum(beta, X, z, method='adagrad', iterations=1000, rate=1, Auto=Fals
         
     
     
+    predict_test = X_test.dot(beta)
     predict = X.dot(beta)
+
+    mse = np.mean( (z_test-predict_test)**2)#1/(n*n) * np.sum(  (np.ravel(z_test)-predict_test)**2)
     
-    mse = 1/(n*n) * np.sum((z-predict)**2)
     info = f'Method {method} \n iterations = {save_iter}', f'momentum = {momentum}', f'learning rate = {eta}', f'mse= {mse}'
     
     print('For Gradient Descent\n')
@@ -805,7 +808,7 @@ def sgd_momentum(X, z, method='adagrad', M=32, epochs=1, Auto=False):   #*** Epo
     beta_list = list()
 
     change = 0
-    momentum = 0.8  # IDEAL MOMENTUM
+    momentum = 0.9  # IDEAL MOMENTUM
     n = X_train.shape[0]  # Number of samples
     m = int(n/M) #number of mini-batches
    
@@ -852,12 +855,12 @@ def sgd_momentum(X, z, method='adagrad', M=32, epochs=1, Auto=False):   #*** Epo
     predict_test = X_test.dot(beta)
     predict = X.dot(beta)
 
-    mse = np.mean( (np.ravel(z_test)-predict_test)**2)#1/(n*n) * np.sum(  (np.ravel(z_test)-predict_test)**2)
-    abs_error_avg= 1/(n*n)*np.sum(np.abs(np.ravel(z_test)-predict_test)) 
+    mse = np.mean( (z_test-predict_test)**2)#1/(n*n) * np.sum(  (np.ravel(z_test)-predict_test)**2)
+    abs_error_avg= 1/(len(z_test))*np.sum(np.abs(np.ravel(z_test)-predict_test)) 
 
     info = [f'Method {method} \n mse = {mse}, momentum = {momentum}, last learning rate = {eta}, batch size = {M}, epochs = {save_e}']
     
-    print(f'MSE for stochastic gradient descent with batches is {mse} \n abs error is {abs_error_avg}')
+    print(f'MSE for stochastic gradient descent with batches is {mse} \n avg abs error {abs_error_avg}')
     print(f'{info}\n')
     return predict, beta, mse, info
 
@@ -873,7 +876,7 @@ predict = run[0] #Our model for GD using OLS, this version of predict has a shap
 
 
 
-sgd = sgd_momentum(X, z, method= 'adagrad', M=32, epochs=50, Auto=False)
+sgd = sgd_momentum(X, z, method= 'adagrad', M=50, epochs=80, Auto=False)
 
 sgd_predict = sgd[0]
 sgd_info = sgd[3]
@@ -936,7 +939,7 @@ ax[1].set_title(f'Actual Franke Model')
 #fig.savefig(f'GD_comparison_franke_contour {info}.pdf')
 plt.show()
 
-
+exit()
 '''Meshgrid color plot Gradient Descent'''
 
 fig, ax = plt.subplots(1, 2, figsize=(12, 6)) 
@@ -953,7 +956,7 @@ ax[1].set_xlabel('x')
 ax[1].set_ylabel('y')
 ax[1].set_title('Actual Franke model')
 #fig.savefig(f'GD_comparison_franke_colormesh {info}.pdf')
-plt.show()
+#plt.show()
 
 
 """
