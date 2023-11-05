@@ -40,7 +40,6 @@ def train_pred_FFNN(
                 scheduler.set_eta(eta_vals[i])
                 network.fit(x_train, y_train, scheduler, batches, epochs, lmbda_vals[j])
                 y_pred = network.predict(x_test)
-                acc_vals[i][j] = network.accuracy(y_pred, y_test)
                 mse_vals[i][j] = mse(y_pred, y_test)
                 r2_vals[i][j] = r2(y_pred, y_test)
 
@@ -119,6 +118,7 @@ def plot_heatmap(
     ax.set_ylabel(ylabel)
     ax.set_xlabel(xlabel)
     plt.savefig(save_path)
+    plt.close(fig)
 
 def mse(y_tilde, y):
     '''Calculates the mean square error of a prediction y_tilde.'''

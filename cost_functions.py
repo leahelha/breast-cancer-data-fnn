@@ -22,6 +22,7 @@ def CostLogReg(target):
 def CostCrossEntropy(target):
     
     def func(X):
+        # return -1 * np.sum(target*X - np.log(1 + np.exp(X)))
         return -(1.0 / target.size) * np.sum(target * np.log(X + 10e-10))
 
     return func
