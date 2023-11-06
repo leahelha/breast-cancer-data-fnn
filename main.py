@@ -60,7 +60,7 @@ batches_vals = [1]
 epochs_vals = [100, 200]
 activation_functions = [sigmoid, RELU, LRELU]
 
-# Refined search based on parameters above, comment these two lines out to do the broader search
+# Refined search based on search with parameters above, comment these two lines out to do the broader search
 model_shape = [(50), (100)]
 eta_vals = [0.001]
 epochs_vals = [500]
@@ -127,13 +127,13 @@ X_test_norm = (X_test-X_mean)/X_std
 # Create neural network and choose parameters
 model_shape = [(50), (100), (50,50)]
 scheduler = Scheduler.Adam(0, 0.9, 0.999)
-eta_vals = anp.logspace(-3,-2,2)
+eta_vals = anp.logspace(-4,-2,3)
 lmbda_vals = anp.logspace(-5,0,6)
 batches_vals = [1]
 epochs_vals = [100, 200]
 activation_functions = [sigmoid, RELU, LRELU]
 
-# Refined search based on parameters above, comment these two lines out to do the broader search
+# Refined search based on search with parameters above, comment these two lines out to do the broader search
 model_shape = [(50)]
 eta_vals = [0.001]
 epochs_vals = [50, 100]
