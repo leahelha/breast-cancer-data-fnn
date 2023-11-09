@@ -1,7 +1,9 @@
+import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.neural_network import MLPClassifier, MLPRegressor
+from sklearn.exceptions import ConvergenceWarning
 from typing import Any, Literal
 
 from FFNN import FFNN
@@ -86,7 +88,13 @@ def train_pred_skl(
         for i in range(len(eta_vals)):
             for j in range(len(lmbda_vals)):
                 network = MLPRegressor(hidden_layer_sizes = hidden_layers, activation = activation, solver = solver, alpha = lmbda_vals[j], learning_rate_init = eta_vals[i], max_iter = epochs, batch_size = x_train.shape[0]//batches, random_state = seed)
-                network.fit(x_train, y_train.flatten())
+
+                # If it does not converge ignore it, the mse_value for that will be None or zero 
+                with warnings.catch_warnings():
+                    warnings.filterwarnings(
+                            "ignore", category=ConvergenceWarning, module="sklearn"
+                            )
+                    network.fit(x_train, y_train.flatten())
                 y_pred = network.predict(x_test)
                 mse_vals[i][j] = mse(y_pred, y_test)
                 r2_vals[i][j] = r2(y_pred, y_test)
@@ -100,8 +108,15 @@ def train_pred_skl(
         for i in range(len(eta_vals)):
             for j in range(len(lmbda_vals)):
                 network = MLPClassifier(hidden_layer_sizes = hidden_layers, activation = activation, solver = solver, alpha = lmbda_vals[j], learning_rate_init = eta_vals[i], batch_size = x_train.shape[0]//batches, max_iter = epochs)
-                network.fit(x_train, y_train.flatten())
+
+                # If it does not converge ignore it, the mse_value for that will be None or zero 
+                with warnings.catch_warnings():
+                    warnings.filterwarnings(
+                            "ignore", category=ConvergenceWarning, module="sklearn"
+                            )
+                    network.fit(x_train, y_train.flatten())
                 acc_vals[i][j] = network.score(x_test, y_test)
+        return acc_vals
 
 def plot_heatmap(
         data: np.ndarray,

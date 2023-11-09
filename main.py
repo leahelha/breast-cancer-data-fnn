@@ -60,15 +60,22 @@ batches_vals = [1]
 epochs_vals = [100, 200]
 activation_functions = [sigmoid, RELU, LRELU]
 
-# Refined search based on search with parameters above, comment these two lines out to do the broader search
-model_shape = [(50), (100)]
-eta_vals = [0.001]
-epochs_vals = [500]
-
 # Train the combinations of parameters
 root_path = Path.cwd()
 problem = "regression"
+
+run_scikit_learn_regression = True
+if run_scikit_learn_regression:
+    # Refined search based on search with parameters above
+    model_shape = [(50), (100)]
+    eta_vals = [0.001]
+    epochs_vals = [500]
+
+    # For this refined search run the scikit model on it
+    problem = "regression_scikit_learn"
+
 print("\n--- TRAINING NEURAL NETWORK ON FRANKE FUNCTION REGRESSION ---")
+
 for hidden_layer in model_shape:
     if isinstance(hidden_layer, int):
         layer_name = f"hidden_layers_{hidden_layer}"
@@ -100,15 +107,15 @@ Activation function for hidden layers = {act_func.__name__}
 
                 print(f"\nNetwork shape: {network_shape}\nEpochs: {epochs}\nBatches: {batches}\nActivation function: {act_name}\n")
                 network = FFNN(network_shape, act_func, lambda x: x, CostOLS, 10)
-                mse_FFNN, r2_FFNN = train_pred_FFNN(network, xy_train_norm, xy_test_norm, z_train_norm, z_test_norm, eta_vals, lmbda_vals, scheduler, batches, epochs)
-                plot_heatmap(mse_FFNN, file_path / "mse_FFNN.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
-                plot_heatmap(r2_FFNN, file_path / "r2_FFNN.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
+                # mse_FFNN, r2_FFNN = train_pred_FFNN(network, xy_train_norm, xy_test_norm, z_train_norm, z_test_norm, eta_vals, lmbda_vals, scheduler, batches, epochs)
+                # plot_heatmap(mse_FFNN, file_path / "mse_FFNN.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
+                # plot_heatmap(r2_FFNN, file_path / "r2_FFNN.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
 
-                # # Using Scikit-Learn for the sigmoid activation functions:
-                # if act_func.__name__ == "sigmoid": # TODO: Ordne med Sklearn, ikke konvergerer
-                #     mse_skl, r2_skl = train_pred_skl(xy_train_norm, xy_test_norm, z_train_norm, z_test_norm, eta_vals, lmbda_vals, network_shape[1:-1], 'logistic', 'adam', batches, epochs)
-                #     plot_heatmap(mse_skl, file_path / "mse_skl.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
-                #     plot_heatmap(r2_skl, file_path / "r2_skl.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
+                # Using Scikit-Learn for the sigmoid activation functions:
+                if False: # run_scikit_learn_regression
+                    mse_skl, r2_skl = train_pred_skl(xy_train_norm, xy_test_norm, z_train_norm, z_test_norm, eta_vals, lmbda_vals, network_shape[1:-1], 'logistic', 'adam', batches, epochs)
+                    plot_heatmap(mse_skl, file_path / "mse_skl.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
+                    plot_heatmap(r2_skl, file_path / "r2_skl.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
 
 ### DATA SETUP ###
 X, y = load_breast_cancer(return_X_y = True)
@@ -133,14 +140,20 @@ batches_vals = [1]
 epochs_vals = [100, 200]
 activation_functions = [sigmoid, RELU, LRELU]
 
-# Refined search based on search with parameters above, comment these two lines out to do the broader search
-model_shape = [(50)]
-eta_vals = [0.001]
-epochs_vals = [50, 100]
-
 # Train the combinations of parameters
 root_path = Path.cwd()
 problem = "classification"
+
+# Refined search based on search with parameters above
+run_scikit_learn_classification = True
+if run_scikit_learn_classification:
+    # These are the refined parameters
+    model_shape = [(50)]
+    eta_vals = [0.001]
+    epochs_vals = [50, 100]
+
+    # For this refined search run the scikit model on it
+    problem = "classification_scikit_learn"
 
 print("\n--- TRAINING NEURAL NETWORK ON BREAST CANCER CLASSIFICATION ---")
 
@@ -165,10 +178,6 @@ for hidden_layer in model_shape:
                 act_name = f"act_func_{act_func.__name__}"
                 file_path = root_path / "plots" / problem / layer_name / batch_name / epoch_name / act_name
                 file_path.mkdir(parents=True, exist_ok=True)
-
-                print(f"\nNetwork shape: {network_shape}\nEpochs: {epochs}\nBatches: {batches}\nActivation function: {act_name}\n")
-                network = FFNN(network_shape, act_func, sigmoid, CostCrossEntropy, 10)
-                accuracy_FFNN = train_pred_FFNN(network, X_train_norm, X_test_norm, y_train, y_test, eta_vals, lmbda_vals, scheduler, batches, epochs, regression = False)
                 parameters_file = f"""Parameters for the FFNN:
 problem = {problem}
 batches = {batches} 
@@ -179,4 +188,13 @@ network shape = {network_shape}
 Activation function for hidden layers = {act_func.__name__}
 """
                 save_parameters(parameters_file, file_path)
-                plot_heatmap(accuracy_FFNN, file_path / "accuracy_FFNN.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
+
+                print(f"\nNetwork shape: {network_shape}\nEpochs: {epochs}\nBatches: {batches}\nActivation function: {act_name}\n")
+                network = FFNN(network_shape, act_func, sigmoid, CostCrossEntropy, 10)
+                # accuracy_FFNN = train_pred_FFNN(network, X_train_norm, X_test_norm, y_train, y_test, eta_vals, lmbda_vals, scheduler, batches, epochs, regression = False)
+                # plot_heatmap(accuracy_FFNN, file_path / "accuracy_FFNN.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
+
+                # Using Scikit-Learn for the activation functions:
+                if run_scikit_learn_classification:
+                    accuracy_skl = train_pred_skl(X_train_norm, X_test_norm, y_train, y_test, eta_vals, lmbda_vals, network_shape[1:-1], 'logistic', 'adam', batches, epochs, regression = False)
+                    plot_heatmap(accuracy_skl, file_path / "accuracy_skl.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
