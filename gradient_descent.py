@@ -17,6 +17,11 @@ from rounders import round_to_figures
 from matplotlib.colors import BoundaryNorm
 from autograd import grad, elementwise_grad
 import autograd.numpy as anp
+
+import seaborn as sns
+
+
+
 """
 This task is done in collaboration, by Ida Monsen, Vetle Henrik Hvoslef and Leah Hansen
 
@@ -696,7 +701,7 @@ def gradients(beta, n, X, z, lamba=0, Auto=False):
     return gradient
 
 
-def gd_momentum(beta, X, z, method='adagrad', lamba=0, iterations=1000, rate=1, Auto=False):   #beta ***
+def gd_momentum(X, z, momentum=0.9, method='adagrad', lamba=0, iterations=1000, rate=1, Auto=False):   #beta ***
     '''
     Function which performs Gradient Descent with momentum
     beta is the beta parameter
@@ -705,24 +710,27 @@ def gd_momentum(beta, X, z, method='adagrad', lamba=0, iterations=1000, rate=1, 
     iterations has a default of 1000 but can be changed
     rate is a factor you can add to the learning rate eta
     '''
-    # b_shape = np.shape(X)[1]
-    # # Initiating a random beta
-    # beta = np.random.randn(b_shape,)
+   
     z = np.ravel(z)
     X_train, X_test, z_train, z_test = train_test_split(X, z, test_size=0.2) 
 
+    b_shape = np.shape(X_train)[1]
+    # Initiating a random beta
+    beta = np.random.randn(b_shape,)
+
     n = X_train.shape[0]  # Number of samples
     #beta_list = list()
-
+    change_list = list()
+    
     change = 0
-    momentum = 0.9    #IDEAL MOMENTUM
+    #momentum = 0.9    #IDEAL MOMENTUM
     # Hessian matrix
     H = (2.0/n)* X.T @ X 
     # Get the eigenvalues
     EigValues, EigVectors = np.linalg.eig(H)
     
     # Attempting to find an optimal learning rate
-    eta = rate*(1.0/np.max(EigValues))  # learning rate   #IDEAL rate = 3, or 1
+    eta = rate#*(1.0/np.max(EigValues))  # learning rate   #IDEAL rate = 3, or 1
 
     mom1 = 0 
     mom2 = 0
@@ -743,24 +751,35 @@ def gd_momentum(beta, X, z, method='adagrad', lamba=0, iterations=1000, rate=1, 
         """
 
         #beta_list.append(beta)
+        if method == 'basic':
+            change = eta*gradient + momentum*change
+            beta -= change
 
         if method == 'adagrad':
             Giter += gradient * gradient
             change, Giter = AdaGrad(change, gradient, eta, Giter, delta=1e-8, momentum=momentum)
+
+            change_list.append(change)
             
             beta -= change
 
         elif method == 'rmsprop':
             change, Giter = RMSprop(change, gradient, eta, Giter, beta=0.9, delta=1e-8, momentum=0)
+
+            change_list.append(change)
+
             beta -= change
 
         else:  # method == 'adam'
             t += 1
             change, mom1, mom2 = ADAM(change, gradient, eta, mom1, mom2, t, beta1=0.9, beta2=0.999, delta=1e-8, momentum=0)
+
+            change_list.append(change)
+
             beta -= change
 
         save_iter = i
-        if np.linalg.norm(change) < 1e-3:
+        if np.linalg.norm(change) < 1e-4:
             break
         
     
@@ -774,7 +793,7 @@ def gd_momentum(beta, X, z, method='adagrad', lamba=0, iterations=1000, rate=1, 
     
     print('For Gradient Descent\n')
     print(f'{info}\n')
-    return predict, beta, mse, info
+    return predict, beta, mse, change_list, info
 
 
 
@@ -783,7 +802,7 @@ def learning_schedule(t, t0, t1):
     return t0/(t+t1)
 
 
-def sgd_momentum(X, z, method='adagrad', M=32, epochs=1, Auto=False):   #*** Epochs
+def sgd_momentum(X, z, momentum=0.9, method='adagrad', lamba=0, M=32, epochs=1, Auto=False):   #*** Epochs
     '''
     Function which performs Stochastic Gradient Descent with momentum
     beta is the beta parameter
@@ -793,9 +812,9 @@ def sgd_momentum(X, z, method='adagrad', M=32, epochs=1, Auto=False):   #*** Epo
     M is the size of the mini-batch used in each iteration
     epochs is number of epochs
     '''
-    print('X shape and z shape')
-    print(np.shape(X))
-    print(np.shape(z))
+    # print('X shape and z shape')
+    # print(np.shape(X))
+    # print(np.shape(z))
     z = np.ravel(z)
     X_train, X_test, z_train, z_test = train_test_split(X, z, test_size=0.2) 
 
@@ -803,12 +822,13 @@ def sgd_momentum(X, z, method='adagrad', M=32, epochs=1, Auto=False):   #*** Epo
     # Initiating a random beta
     beta = np.random.randn(b_shape,)
 
-    print('shape is')
-    print(np.shape(beta))
-    beta_list = list()
+    # print('shape is')
+    # print(np.shape(beta))
+    change_list = list()
+  
 
     change = 0
-    momentum = 0.9  # IDEAL MOMENTUM
+    #momentum = 0.9  # IDEAL MOMENTUM
     n = X_train.shape[0]  # Number of samples
     m = int(n/M) #number of mini-batches
    
@@ -825,27 +845,31 @@ def sgd_momentum(X, z, method='adagrad', M=32, epochs=1, Auto=False):   #*** Epo
             X_batch = X_train[indices]
             z_batch = z_train[indices] 
             
-            gradient = gradients(beta, M, X_batch, z_batch, lamba=0, Auto=Auto)
+            gradient = gradients(beta, M, X_batch, z_batch, lamba=lamba, Auto=Auto)
             
-
-            beta_list.append(beta)
-
             eta = learning_schedule(epochs*m+i, t0, t1)
+
+            if method == 'basic':
+                change = eta*gradient + momentum*change
+                beta -= change
 
             if method == 'adagrad':
                 Giter += gradient * gradient
                 change, Giter = AdaGrad(change, gradient, eta, Giter, delta=1e-8, momentum=momentum)
-
+                change_list.append(change)
                 #change = eta*gradient + momentum*change
                 beta -= change
                 
             elif method == 'rmsprop':
                 change, Giter = RMSprop(change, gradient, eta, Giter, beta=0.9, delta=1e-8, momentum=0)
+                change_list.append(change)
+
                 beta -= change
                     
             elif method == 'adam':
                 t += 1
                 change, mom1, mom2 = ADAM(change, gradient, eta, mom1, mom2, t, beta1=0.9, beta2=0.999, delta=1e-8, momentum=0)
+                change_list.append(change)
              
                 beta -= change
         
@@ -855,22 +879,115 @@ def sgd_momentum(X, z, method='adagrad', M=32, epochs=1, Auto=False):   #*** Epo
     predict_test = X_test.dot(beta)
     predict = X.dot(beta)
 
-    mse = np.mean( (z_test-predict_test)**2)#1/(n*n) * np.sum(  (np.ravel(z_test)-predict_test)**2)
-    abs_error_avg= 1/(len(z_test))*np.sum(np.abs(np.ravel(z_test)-predict_test)) 
+    mse = np.mean( (z_test-predict_test)**2 ) #1/(n*n) * np.sum(  (np.ravel(z_test)-predict_test)**2)
+    abs_error_avg = 1/(len(z_test))*np.sum(np.abs(np.ravel(z_test)-predict_test)) 
 
     info = [f'Method {method} \n mse = {mse}, momentum = {momentum}, last learning rate = {eta}, batch size = {M}, epochs = {save_e}']
     
-    print(f'MSE for stochastic gradient descent with batches is {mse} \n avg abs error {abs_error_avg}')
+    # print(f'MSE for stochastic gradient descent with batches is {mse} \n avg abs error {abs_error_avg}')
     print(f'{info}\n')
-    return predict, beta, mse, info
+    return predict, beta, mse, change_list, info
+
 
 
 
 '''Function calls'''
+"""
+gd_momentum(X, z, momentum, method, lamba, iterations, rate, Auto)
+sgd_momentum(X, z, momentum, method, lamba, M, epochs, Auto)
+
+Compare convergance with a fixed learning rate
+
+2.
+For GD and SGD make a plot of MSE for different momentums over learning rates.
+
+For SGD make a plot of different learning rates over epochs.
+
+
+3.
+Plot MSE for a different batch sizes over epochs, using best learning rate and momentum from 2.
 
 
 
-run = gd_momentum(beta, X, z, method='adagrad', iterations=100000, rate=3, Auto=False)
+Lag loops som kjører gjennom:
+
+momentum
+NOT method
+lamba = 0, and several lambda values maybe lamba = [0, 0.0001, 0.001, 0.01, 0.1, 1.0]
+NOT Auto
+
+NOT ? iterations
+rate
+
+
+epochs
+M
+
+
+"""
+# _rate = [1, 2, 3]
+_rate = [0.5, 0.1, 0.01, 0.001, 10**(-4), 10**(-5)]#[3]
+_momentum = [0, 0.9]  
+_lamba = [0, 0.0001, 0.001, 0.01, 0.1, 1.0]
+
+_epochs = [1, 50, 100, 200, 500, 800]
+_M = [5, 10, 35, 70, 100, 200]
+
+
+
+
+
+
+# mse_list = np.zeros((len(_M), len(_epochs))) 
+# for M in range(len(_M)):
+#     for e in range(len(_epochs)):
+#         sgd = sgd_momentum(X, z, momentum=0.9, method='basic', lamba=0, M=_M[M], epochs=_epochs[e], Auto=False)
+#         mse_list[M, e] = sgd[2]
+    
+
+# Saving the MSE values to a file
+# np.save("mse_list.npy", mse_list)
+
+mse_list = np.load('mse_list.npy')
+# Creating the heatmap
+plt.figure(figsize=(10, 6))
+sns.heatmap(mse_list[1:, 1:], annot=True, xticklabels=_epochs[1:], yticklabels=_M[1:], cmap='viridis')
+plt.title('SGD: MSE over epochs for different batch sizes (M)')
+plt.xlabel('Epochs')
+plt.ylabel('Batch Sizes M')
+plt.show()
+
+# plt.title('SGD: MSE over epochs for different batch sizes M')
+# plt.xlabel('epochs')
+# plt.ylabel('M')
+
+# plt.legend()
+# plt.show()
+
+
+# for l in _lamba:
+    
+#     for m in _momentum:
+#         mse_list = []
+#         for r in _rate:
+#             gd = gd_momentum(X, z, momentum=m, method='basic', lamba=l, iterations=30000, rate=r, Auto=False)
+#             mse = gd[2]
+#             mse_list.append(mse)
+#         print(len(mse_list))
+#         plt.plot(_rate, mse_list, label=f'momentum = {m}')
+
+# plt.title('GD: MSE over learning rates for different momentum')
+# plt.xlabel('learning rate $\eta$')
+# plt.ylabel('MSE')
+# plt.xscale('log')
+# plt.yscale('log')
+# plt.legend()
+# plt.show()
+    
+
+
+exit()
+run = gd_momentum(X, z, method='adagrad', iterations=100000, rate=3, Auto=False)
 info = run[3]
 predict = run[0] #Our model for GD using OLS, this version of predict has a shape (n*n,). It is 1D
 
@@ -939,7 +1056,7 @@ ax[1].set_title(f'Actual Franke Model')
 #fig.savefig(f'GD_comparison_franke_contour {info}.pdf')
 plt.show()
 
-exit()
+
 '''Meshgrid color plot Gradient Descent'''
 
 fig, ax = plt.subplots(1, 2, figsize=(12, 6)) 
