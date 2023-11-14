@@ -154,7 +154,8 @@ def main():
 
 
     ### LOGISTIC REGRESSION ###
-    eta_vals = anp.logspace(-3, -2, 3)
+    eta_vals = anp.logspace(-3, -1, 3)
+    print(f"{eta_vals=}")
     lmbda_vals = anp.logspace(-5, 0, 6)
     grad_methods = ["basic", "adagrad", "rmsprop", "adam"]
 
@@ -169,7 +170,7 @@ def main():
         file_path_sklearn.mkdir(parents=True, exist_ok=True)
 
         acc_score = train_pred_logistic_regression_skl(X_train, X_test, z_train, z_test, eta_vals, lmbda_vals)
-        plot_heatmap(acc_score, file_path_sklearn / "logistic_reg_skl.pdf", r"$\eta$", r"$\lambda", eta_vals, lmbda_vals)
+        plot_heatmap(acc_score, file_path_sklearn / "logistic_reg_skl.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
 
     for method in grad_methods:
         print(f"\nRunning our logistic regression with gd, method={method}")
@@ -177,7 +178,7 @@ def main():
         file_path.mkdir(parents=True, exist_ok=True)
 
         acc_score = train_pred_logistic_regression(X_train, X_test, z_train, z_test, eta_vals, lmbda_vals, method=method)
-        plot_heatmap(acc_score, file_path / "logistic_reg.pdf", r"$\eta$", r"$\lambda", eta_vals, lmbda_vals)
+        plot_heatmap(acc_score, file_path / "logistic_reg.pdf", r"$\eta$", r"$\lambda$", eta_vals, lmbda_vals)
 
 if __name__=="__main__":
     main()
