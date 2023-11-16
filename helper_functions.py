@@ -94,10 +94,10 @@ def train_pred_skl(
                     warnings.filterwarnings(
                             "ignore", category=ConvergenceWarning, module="sklearn"
                             )
-                    network.fit(x_train, y_train.flatten())
+                network.fit(x_train, y_train.flatten())
                 y_pred = network.predict(x_test)
-                mse_vals[i][j] = mse(y_pred, y_test)
-                r2_vals[i][j] = r2(y_pred, y_test)
+                mse_vals[i][j] = mse(y_pred, y_test.flatten())
+                r2_vals[i][j] = r2(y_pred, y_test.flatten())
 
         return mse_vals, r2_vals
 
