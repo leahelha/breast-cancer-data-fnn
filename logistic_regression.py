@@ -34,7 +34,7 @@ def logreg_cost(n, beta, X, z, L):
 
 def logreg_gd(X_train, X_test, z_train, z_test, eta, method='adagrad', lamba=2, iterations=100):
     '''
-    Function which performs Stochastic Gradient Descent with momentum
+    Function which performs Gradient Descent with momentum
     beta is the beta parameter
     X is the design matrix
     z is the target data

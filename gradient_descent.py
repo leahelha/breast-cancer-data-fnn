@@ -26,8 +26,8 @@ import seaborn as sns
 This task is done in collaboration, by Ida Monsen, Vetle Henrik Hvoslef and Leah Hansen
 
 """
-np.random.seed(11)
-seed(11)
+np.random.seed(123)
+seed(123)
 
 class regression_class:
     '''Does OLS, Ridge and Lasso regression with a polynomial model of degree up to n_deg_max.
@@ -618,7 +618,7 @@ def FrankeFunction(x,y):
     return term1 + term2 + term3 + term4
 
 # the number of datapoints
-n = 100
+n = 101
 x = np.random.rand(n,1)
 y = np.random.rand(n,1)
 
@@ -628,6 +628,12 @@ xy = np.stack((np.ravel(x_),np.ravel(y_)), axis = -1) # formatting needed to set
 
 # True model 
 z = FrankeFunction(x_, y_)
+
+# Adding noise
+noise = np.random.normal(0, 0.1,np.shape(z))
+z+=noise
+
+ 
 
 # Making our design matrix using Project 1 class
 n_deg_max = 12 # max polynomial degree
@@ -689,8 +695,8 @@ def gradients(beta, n, X, z, lamba=0, Auto=False):
     
     '''
 
-    if lamba not in [0,1]:
-        raise ValueError('The lambda (lamba) value must be 0 or 1. 0 for OLS and 1 for Ridge')
+    #if lamba not in [0,1]:
+    #    raise ValueError('The lambda (lamba) value must be 0 or 1. 0 for OLS and 1 for Ridge')
     
     gradient = (2.0 /n) * X.T @ (X @ beta - z) + 2*lamba*beta
     
@@ -739,7 +745,6 @@ def gd_momentum(X, z, momentum=0.9, method='adagrad', lamba=0, iterations=1000, 
     Giter = 0
     
 
-
     for i in range(iterations):
         
         gradient = gradients(beta, n, X_train, z_train, lamba=0, Auto=Auto)
@@ -755,7 +760,8 @@ def gd_momentum(X, z, momentum=0.9, method='adagrad', lamba=0, iterations=1000, 
             change = eta*gradient + momentum*change
             beta -= change
 
-        if method == 'adagrad':
+        elif method == 'adagrad':
+            print('ADA')
             Giter += gradient * gradient
             change, Giter = AdaGrad(change, gradient, eta, Giter, delta=1e-8, momentum=momentum)
 
@@ -764,13 +770,15 @@ def gd_momentum(X, z, momentum=0.9, method='adagrad', lamba=0, iterations=1000, 
             beta -= change
 
         elif method == 'rmsprop':
+            print('RMS')
             change, Giter = RMSprop(change, gradient, eta, Giter, beta=0.9, delta=1e-8, momentum=0)
 
             change_list.append(change)
 
             beta -= change
 
-        else:  # method == 'adam'
+        elif method == 'adam':  # method == 'adam'
+            print('ADAM')
             t += 1
             change, mom1, mom2 = ADAM(change, gradient, eta, mom1, mom2, t, beta1=0.9, beta2=0.999, delta=1e-8, momentum=0)
 
@@ -779,10 +787,9 @@ def gd_momentum(X, z, momentum=0.9, method='adagrad', lamba=0, iterations=1000, 
             beta -= change
 
         save_iter = i
-        if np.linalg.norm(change) < 1e-4:
-            break
+        # if np.linalg.norm(change) < 1e-4:
+        #     break
         
-    
     
     predict_test = X_test.dot(beta)
     predict = X.dot(beta)
@@ -892,98 +899,155 @@ def sgd_momentum(X, z, momentum=0.9, method='adagrad', lamba=0, M=32, epochs=1, 
 
 
 '''Function calls'''
-"""
-gd_momentum(X, z, momentum, method, lamba, iterations, rate, Auto)
-sgd_momentum(X, z, momentum, method, lamba, M, epochs, Auto)
+''' Making a heatmap of the MSE for M=35, over 500 epochs, varying the lambda values used in Ridge regression
+One heatmapt for SGD and one for GD
 
-Compare convergance with a fixed learning rate
+GD varies learning rate and lambda
+SGD varies lambda and epochs
 
-2.
-For GD and SGD make a plot of MSE for different momentums over learning rates.
-
-For SGD make a plot of different learning rates over epochs.
-
-
-3.
-Plot MSE for a different batch sizes over epochs, using best learning rate and momentum from 2.
-
-
-
-Lag loops som kjører gjennom:
-
-momentum
-NOT method
-lamba = 0, and several lambda values maybe lamba = [0, 0.0001, 0.001, 0.01, 0.1, 1.0]
-NOT Auto
-
-NOT ? iterations
-rate
-
-
-epochs
-M
-
-
-"""
+Comment out plots that arent supposed to run or use exit()
+'''
 # _rate = [1, 2, 3]
-_rate = [0.5, 0.1, 0.01, 0.001, 10**(-4), 10**(-5)]#[3]
+_rate = [0.1, 0.01, 0.001, 10**(-4), 10**(-5), 10**(-6), 10**(-7)]#[3]
 _momentum = [0, 0.9]  
-_lamba = [0, 0.0001, 0.001, 0.01, 0.1, 1.0]
+_lamba = [0.0001, 0.001, 0.01, 0.1, 1.0]
 
-_epochs = [1, 50, 100, 200, 500, 800]
-_M = [5, 10, 35, 70, 100, 200]
-
-
+_epochs = [50, 100, 200, 500, 800]
+_M = [10, 35, 70, 100, 200]
 
 
+'''Plotting MSE for different learning rates for GD and OLS regression'''
+it = 1500
+for m in _momentum:
+    mse_list = []
+    for r in _rate:
+        gd = gd_momentum(X, z, momentum=m, method='basic', lamba=0, iterations=it, rate=r, Auto=False)
+        mse = gd[2]
+        mse_list.append(mse)
+    print(len(mse_list))
+    plt.plot(_rate, mse_list, label=f'momentum = {m}')
+
+plt.title(f'GD: MSE over learning rates for different momentum, iterations = {it}', fontsize=10)
+plt.xlabel('$\eta$', fontsize=10)
+plt.ylabel('MSE', fontsize=10)
+plt.xscale('log')
+plt.yscale('log')
+plt.legend()
+plt.show()
 
 
-# mse_list = np.zeros((len(_M), len(_epochs))) 
-# for M in range(len(_M)):
-#     for e in range(len(_epochs)):
-#         sgd = sgd_momentum(X, z, momentum=0.9, method='basic', lamba=0, M=_M[M], epochs=_epochs[e], Auto=False)
-#         mse_list[M, e] = sgd[2]
+
+mse_list_ridge_sgd = np.zeros((len(_lamba), len(_epochs))) 
+for l in range(len(_lamba)):
+    for e in range(len(_epochs)):
+        sgd = sgd_momentum(X, z, momentum=0.9, method='basic', lamba=_lamba[l], M=35, epochs=_epochs[e], Auto=False)
+        #gd = gd_momentum(X, z, momentum=0.9, method='basic', lamba=_lamba[l], M=35, iterations=_epochs[e], Auto=False)
+        mse_list_ridge_sgd[l, e] = sgd[2]
+
+
+np.save("mse_list_ridge_sgd.npy", mse_list_ridge_sgd)  #This mse list is for OLS using SGD
+
+#Creating the heatmap
+plt.figure(figsize=(10, 6))
+sns.heatmap(mse_list_ridge_sgd[1:, 1:], annot=True, xticklabels=_epochs[1:], yticklabels=_lamba[1:], cmap='viridis')
+plt.title('SGD: MSE for different $\lambda$ and epochs, M=35', fontsize=17)
+plt.xlabel('epochs', fontsize=17)
+plt.ylabel('$\lambda$', fontsize=17)
+plt.show()
+
+
+mse_list_ridge_gd = np.zeros((len(_lamba), len(_rate))) 
+
+for l in range(len(_lamba)):
+    for r in range(len(_rate)):
+        #sgd = sgd_momentum(X, z, momentum=0.9, method='basic', lamba=_lamba[l], M=35, epochs=_epochs[e], Auto=False)
+        gd = gd_momentum(X, z, momentum=0, method='basic', lamba=_lamba[l], iterations=it, rate=_rate[r], Auto=False)
+        mse_list_ridge_gd[l, r] = gd[2]
+        print(gd[2])
+
+np.save("mse_list_ridge_gd.npy", mse_list_ridge_gd)
+
+print(mse_list_ridge_gd[0])
+# Creating the heatmap
+plt.figure(figsize=(10, 6))
+sns.heatmap(mse_list_ridge_gd, annot=True, xticklabels=_rate, yticklabels=_lamba, cmap='viridis')
+plt.title(f'GD: MSE for different $\lambda$ and $\eta$, iterations={it}', fontsize=17)
+plt.xlabel('$\eta$', fontsize=17)
+plt.ylabel('$\lambda$', fontsize=17)
+plt.savefig(f'GD_MSE_ridge_lambda_eta_heatmap_momentum=0.pdf')
+
+
+'''Ridge regression GD, Plotting MSE for different lambda and learning rate values, using'''
+# mse_list_ridge_gd = np.zeros((len(_lamba), len(_rate))) 
+
+for l in range(len(_lamba)):
+    for r in range(len(_rate)):
+        #sgd = sgd_momentum(X, z, momentum=0.9, method='basic', lamba=_lamba[l], M=35, epochs=_epochs[e], Auto=False)
+        gd = gd_momentum(X, z, momentum=0.9, method='basic', lamba=_lamba[l], iterations=it, rate=_rate[r], Auto=False)
+        mse_list_ridge_gd[l, r] = gd[2]
+        print(gd[2])
+
+np.save("mse_list_ridge_gd.npy", mse_list_ridge_gd)
+
+print(mse_list_ridge_gd[0])
+# Creating the heatmap
+plt.figure(figsize=(10, 6))
+sns.heatmap(mse_list_ridge_gd, annot=True, xticklabels=_rate, yticklabels=_lamba, cmap='viridis')
+plt.title(f'GD: MSE for different $\lambda$ and $\eta$, iterations={it}', fontsize=17)
+plt.xlabel('$\eta$', fontsize=17)
+plt.ylabel('$\lambda$', fontsize=17)
+plt.savefig('GD_MSE_ridge_lambda_eta_heatmap_momentum=09.pdf')
+plt.show()
+
+
+'''OLS SGD'''
+mse_list = np.zeros((len(_M), len(_epochs))) 
+for M in range(len(_M)):
+    for e in range(len(_epochs)):
+        sgd = sgd_momentum(X, z, momentum=0.9, method='basic', lamba=0, M=_M[M], epochs=_epochs[e], Auto=False)
+        mse_list[M, e] = sgd[2]
     
 
-# Saving the MSE values to a file
-# np.save("mse_list.npy", mse_list)
+#Saving the MSE values to a file
+np.save("mse_list.npy", mse_list)  #This mse list is for OLS using SGD
 
 mse_list = np.load('mse_list.npy')
 # Creating the heatmap
 plt.figure(figsize=(10, 6))
-sns.heatmap(mse_list[1:, 1:], annot=True, xticklabels=_epochs[1:], yticklabels=_M[1:], cmap='viridis')
-plt.title('SGD: MSE over epochs for different batch sizes (M)')
-plt.xlabel('Epochs')
-plt.ylabel('Batch Sizes M')
+sns.heatmap(mse_list, annot=True, xticklabels=_epochs, yticklabels=_M, cmap='viridis')
+plt.title('SGD: MSE over epochs for different batch sizes M', fontsize=17)
+plt.xlabel('Epochs', fontsize=17)
+plt.ylabel('M', fontsize=17)
+plt.savefig('SGD_MSE_OLS_M_vs_epoch_heatmap.pdf')
 plt.show()
 
-# plt.title('SGD: MSE over epochs for different batch sizes M')
-# plt.xlabel('epochs')
-# plt.ylabel('M')
+'''Ridge regression SGD'''
+mse_list_ridge_sgd = np.zeros((len(_lamba), len(_epochs))) 
 
-# plt.legend()
-# plt.show()
+for l in range(len(_lamba)):
+    for e in range(len(_epochs)):
+        sgd = sgd_momentum(X, z, momentum=0.9, method='basic', lamba=_lamba[l], M=35, epochs=_epochs[e], Auto=False)
+        #gd = gd_momentum(X, z, momentum=0.9, method='basic', lamba=_lamba[l], iterations=it, rate=_rate[r], Auto=False)
+        mse_list_ridge_sgd[l, e] = sgd[2]
+        print(sgd[2])
+
+np.save("mse_list_ridge_sgd.npy", mse_list_ridge_sgd)
+
+mse_list_ridge_sgd = np.load('mse_list_ridge_sgd.npy')
+print(mse_list_ridge_sgd[0])
+# Creating the heatmap
+plt.figure(figsize=(10, 6))
+sns.heatmap(mse_list_ridge_sgd, annot=True, xticklabels=_epochs, yticklabels=_lamba, cmap='viridis')
+plt.title(f'SGD: MSE for different $\lambda$ and epochs, M=35', fontsize=17)
+plt.xlabel('Epochs', fontsize=17)
+plt.ylabel('$\lambda$', fontsize=17)
+plt.savefig('SGD_MSE_ridge_lambda_epoch_heatmap.pdf')
+plt.show()
 
 
-# for l in _lamba:
-    
-#     for m in _momentum:
-#         mse_list = []
-#         for r in _rate:
-#             gd = gd_momentum(X, z, momentum=m, method='basic', lamba=l, iterations=30000, rate=r, Auto=False)
-#             mse = gd[2]
-#             mse_list.append(mse)
-#         print(len(mse_list))
-#         plt.plot(_rate, mse_list, label=f'momentum = {m}')
 
-# plt.title('GD: MSE over learning rates for different momentum')
-# plt.xlabel('learning rate $\eta$')
-# plt.ylabel('MSE')
-# plt.xscale('log')
-# plt.yscale('log')
-# plt.legend()
-# plt.show()
-    
+
+
 
 
 exit()
@@ -1076,60 +1140,3 @@ ax[1].set_title('Actual Franke model')
 #plt.show()
 
 
-"""
-Question for TA:
-Should momentum ever be added to the ADAM and/or RMSprop methods?
-
-
-- ADAM and RMSprop edit the gradient and implicitly then change the learning rate, but not explicitly
-        -> Not explicitly changing eta. Is that oki?
-
-
-        
-
-- Lag bash script for å automatisere:
-        
--Grid search:
-  -> lambda - regularization parameter
-  -> eta - learning rate
-- epochs(iterations) -> øker antall noder til MSE ikke blir bedre
-                     -> legg til lag
-
-- Bytt aktiveringsfunksjon
-
-
-Leah:
-- Gjør oppg e)
-
-
-
-Lørdag:
-- Integrere a i NN stuff
-- fullføre oppg e
-
-- Produser resultater 
-
-- Start skriving: 
-    -> Strukturer ferdig teori
-    -> Legg inn og beskriv Resultater
-    -> Kan gi notater til diskusjon
-    -> Fullfør abstrakt
-    
-
-Søndag:
-- Fullfør skriving:
-    -> Fullfør teori
-
-    -> Start og fullfør metode
-    -> Skriv en draft intro og få ChGPT til å fikse den
-
-    -> Skriv en draft diskusjon og konklusjon
-
-
-Sjekkliste:
-- Har vi nevnt alle oppgavene?
-- Har alle figurer akse labels og figurtekts?
-- Nevner vi all relevant teori?
-
-
-"""
