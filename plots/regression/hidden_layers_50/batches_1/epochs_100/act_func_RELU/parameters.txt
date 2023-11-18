@@ -1,0 +1,8 @@
+Parameters for the FFNN:
+problem = regression
+batches = 1 
+epochs = 100
+network shape = (2, 50, 1)
+- First layer: 50
+- Second layer: 1
+Activation function for hidden layers = RELU

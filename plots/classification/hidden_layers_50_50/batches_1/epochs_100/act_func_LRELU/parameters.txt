@@ -1,0 +1,8 @@
+Parameters for the FFNN:
+problem = classification
+batches = 1 
+epochs = 100
+network shape = (30, 50, 50, 1)
+- First layer: 50
+- Second layer: 50
+Activation function for hidden layers = LRELU
