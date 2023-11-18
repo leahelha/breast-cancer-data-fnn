@@ -64,7 +64,7 @@ activation_functions = [sigmoid, RELU, LRELU]
 root_path = Path.cwd()
 problem = "regression"
 
-run_scikit_learn_regression = True
+run_scikit_learn_regression = False
 if run_scikit_learn_regression:
     # Refined search based on search with parameters above
     model_shape = [(50), (100)]
@@ -145,7 +145,7 @@ root_path = Path.cwd()
 problem = "classification"
 
 # Refined search based on search with parameters above
-run_scikit_learn_classification = True
+run_scikit_learn_classification = False
 if run_scikit_learn_classification:
     # These are the refined parameters
     model_shape = [(50)]
