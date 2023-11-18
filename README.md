@@ -24,8 +24,7 @@ We use a syntizhed dataset that is made using the _Franke function_. The functio
 The dataset is UCI ML Breast Cancer Wisconsin (Diagnostic). It can be loaded in by using the _Python_ module _Scikit-learn_ `sklearn.datasets.load_breast_cancer()`.
 More information on the dataset can be found on:
 
-https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic[
-](https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic)
+[https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic](https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic)
 
 
 
