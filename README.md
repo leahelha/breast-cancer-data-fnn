@@ -1,4 +1,4 @@
-# FYS-STK4155: Project 2:
+# Using a Feedforward Neural Network to Perform Linear and Logistic Regression:
 
 
 ## Project overview:
